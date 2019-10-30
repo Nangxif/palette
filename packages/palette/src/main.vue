@@ -85,9 +85,6 @@ export default {
     // 手绘
     startPoint(e) {
       const event = e || window.event;
-      if (this.startNew) {
-        this.startOld.push(this.startNew);
-      }
 
       this.startNew = {
         x:
@@ -98,6 +95,7 @@ export default {
           this.$refs.palette.getBoundingClientRect().top,
         isPaint: false
       };
+      this.startOld.push(this.startNew);
 
       if (this.touchType == "Random") {
         this.ctx.beginPath();
@@ -215,26 +213,16 @@ export default {
     },
     // 画直线
     paintLine() {
-      if (!this.startNew) {
-        this.$emit("paintLine", "You need at least two active points");
-        console.log("You need at least two active points");
-        return;
-      }
-      let canuse = this.startOld.concat(this.startNew).findIndex(value => {
+      let canuse = this.startOld.findIndex(value => {
         return !value.isPaint;
       });
       // 如果不满足两个活跃的点
-      if (
-        !this.startOld.find(value => {
-          return !value.isPaint;
-        }) &&
-        this.startNew
-      ) {
+      if (canuse == -1 || this.startOld.length - 1 - canuse < 1) {
         this.$emit("paintLine", "You need at least two active points");
         console.log("You need at least two active points");
         return;
       }
-      let canuseArr = this.startOld.concat(this.startNew).slice(canuse);
+      let canuseArr = this.startOld.slice(canuse);
       canuseArr.forEach((item, index, arr) => {
         this.ctx.beginPath();
         if (index < arr.length - 1) {
@@ -250,16 +238,11 @@ export default {
     },
     // 画闭合多边形
     paintIrregularPolygon(type = "Hollow") {
-      if (!this.startNew) {
-        this.$emit("paintLine", "You need at least three active points");
-        console.log("You need at least three active points");
-        return;
-      }
-      let canuse = this.startOld.concat(this.startNew).findIndex(value => {
+      let canuse = this.startOld.findIndex(value => {
         return !value.isPaint;
       });
       // 如果不满足三个活跃的点
-      let canuseArr = this.startOld.concat(this.startNew).slice(canuse);
+      let canuseArr = this.startOld.slice(canuse);
       if (canuseArr.length < 3) {
         this.$emit("paintLine", "You need at least three active points");
         console.log("You need at least three active points");
