@@ -31,27 +31,69 @@
         :height="canvasStyles.height - 2 * canvasStyles.borderWidth"
       ></canvas>
     </div>
-    当前画笔状态：{{ currentStatus }}
-    <div>
-      <button type="button" @click="clearPalette">
-        清除
-      </button>
-      <button type="button" @click="savePalette()">
-        生成图片
-      </button>
-      <button type="button" @click="paintLine">
-        画直线
-      </button>
-      <button type="button" @click="paintIrregularPolygon('Hollow')">
-        画空心不规则多边形
-      </button>
-      <button type="button" @click="paintIrregularPolygon('Solid')">
-        画实心不规则多边形
-      </button>
-      <button type="button" @click="paintCircle">画圆形</button>
-      <button type="button" @click="paintRectangle">画矩形</button>
-      <button type="button" @click="paintText">插入文字</button>
-      <button type="button" @click="showEraser">橡皮擦</button>
+    <div class="showBar" ref="showBar">
+      <div class="showBar_close" @click="showBar">&times;</div>
+      <p class="showBar_title">当前画笔状态：{{ currentStatus }}</p>
+      <div class="showBar_wrapper">
+        <div v-if="showbarOption.clearBtn" class="showBar_item">
+          <button type="button" @click="clearPalette">
+            清除
+          </button>
+          当前清理次数{{ clearTimes }}
+        </div>
+        <div class="showBar_item">
+          <button type="button" @click="paintRandom">
+            普通画笔
+          </button>
+        </div>
+        <div v-if="showbarOption.lineBtn" class="showBar_item">
+          <button type="button" @click="paintLine">
+            直线画笔
+          </button>
+        </div>
+        <div
+          class="showBar_item"
+          v-if="showbarOption.hollowIrregularPolygonBtn"
+        >
+          <button type="button" @click="paintIrregularPolygon('Hollow')">
+            空心不规则多边形画笔
+          </button>
+        </div>
+        <div class="showBar_item" v-if="showbarOption.solidIrregularPolygonBtn">
+          <button type="button" @click="paintIrregularPolygon('Solid')">
+            实心不规则多边形画笔
+          </button>
+        </div>
+        <div class="showBar_item" v-if="showbarOption.paintCircleBtn">
+          <button type="button" @click="paintCircle">
+            圆形画笔
+          </button>
+        </div>
+        <div class="showBar_item" v-if="showbarOption.paintRectangleBtn">
+          <button type="button" @click="paintRectangle">
+            矩形画笔
+          </button>
+        </div>
+        <div class="showBar_item" v-if="showbarOption.paintTextBtn">
+          <button type="button" @click="paintText">
+            插入文字
+          </button>
+        </div>
+        <div class="showBar_item" v-if="showbarOption.eraserBtn">
+          <button type="button" @click="showEraser">
+            橡皮擦
+          </button>
+        </div>
+        <div v-if="showbarOption.saveBtn.isShow" class="showBar_item">
+          <button
+            type="button"
+            @click="savePalette(showbarOption.saveBtn.imageType)"
+            v-if="showbarOption.saveBtn.isShow"
+          >
+            生成图片
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -69,6 +111,25 @@ export default {
       type: String,
       default: ""
     },
+    showbarOption: {
+      type: Object,
+      default: () => {
+        return {
+          clearBtn: true,
+          saveBtn: {
+            isShow: true,
+            imageType: "png"
+          },
+          lineBtn: true,
+          hollowIrregularPolygonBtn: true,
+          solidIrregularPolygonBtn: true,
+          paintCircleBtn: true,
+          paintRectangleBtn: true,
+          paintTextBtn: true,
+          eraserBtn: true
+        };
+      }
+    },
     // canvas样式
     canvasStyle: {
       type: Object,
@@ -84,7 +145,7 @@ export default {
     // 全局默认线条宽度
     defaultLineWidth: {
       type: Number,
-      default: 10
+      default: 2
     },
     // 橡皮擦样式
     eraserOption: {
@@ -106,7 +167,7 @@ export default {
       },
       cans: null,
       ctx: null,
-      currentStatus: "随便画",
+      currentStatus: "普通画笔",
       touchType: "Random",
       startNew: null, //当前点击的点
       startOld: [], //存放之前点过的历史点
@@ -121,6 +182,8 @@ export default {
         backgroundColor: "black",
         isRect: false
       },
+      isShowBar: false,
+      clearTimes: 0,
       lastBase64: ""
     };
   },
@@ -233,6 +296,7 @@ export default {
           r}px;`;
       }
 
+      // 正方形的拖动分四个角的拖动
       if (this.touchType == "PaintRectangle") {
         this.rectangle.style.width = `${Math.abs(
           this.startNew.x - this.move.x
@@ -240,13 +304,38 @@ export default {
         this.rectangle.style.height = `${Math.abs(
           this.startNew.y - this.move.y
         )}px`;
+        if (this.startNew.x - this.move.x <= 0) {
+          if (this.startNew.y - this.move.y > 0) {
+            this.rectangle.style[
+              transformKey
+            ] = `translate3d(${this.startNew.x}px,${this.move.y}px,0)`;
+            this.rectangle.dataset.x = this.startNew.x;
+            this.rectangle.dataset.y = this.move.y;
+          } else {
+            this.rectangle.dataset.x = this.startNew.x;
+            this.rectangle.dataset.y = this.startNew.y;
+          }
+        } else {
+          if (this.startNew.y - this.move.y > 0) {
+            this.rectangle.style[
+              transformKey
+            ] = `translate3d(${this.move.x}px,${this.move.y}px,0)`;
+            this.rectangle.dataset.x = this.move.x;
+            this.rectangle.dataset.y = this.move.y;
+          } else {
+            this.rectangle.style[
+              transformKey
+            ] = `translate3d(${this.move.x}px,${this.startNew.y}px,0)`;
+            this.rectangle.dataset.x = this.move.x;
+            this.rectangle.dataset.y = this.startNew.y;
+          }
+        }
       }
 
       if (this.touchType == "PaintText") {
         this.text.style.width = `${Math.abs(this.startNew.x - this.move.x)}px`;
         this.text.style.height = `${Math.abs(this.startNew.y - this.move.y)}px`;
       }
-      this.startNew = null;
     },
     endPoint() {
       if (this.touchType == "Random") {
@@ -278,15 +367,15 @@ export default {
           2 * Math.PI
         );
         this.ctx.stroke();
-        this.$refs.palette_wrapper.removeChild(this.circle);
+        // this.$refs.palette_wrapper.removeChild(this.circle);
       }
       if (this.touchType == "PaintRectangle") {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
         this.ctx.strokeStyle = "black";
         this.ctx.rect(
-          this.startNew.x,
-          this.startNew.y,
+          this.rectangle.dataset.x,
+          this.rectangle.dataset.y,
           this.rectangle.offsetWidth,
           this.rectangle.offsetHeight
         );
@@ -364,24 +453,31 @@ export default {
         this.ctx.fill();
       }
     },
+    // 随便画
+    paintRandom() {
+      this.touchType = "Random";
+      this.currentStatus = "普通画笔";
+    },
     // 画个圆形
     paintCircle() {
       this.touchType = "PaintCircle";
+      this.currentStatus = "圆形画笔";
     },
     // 画个矩形
     paintRectangle() {
       this.touchType = "PaintRectangle";
+      this.currentStatus = "矩形画笔";
     },
     // 写文字
     paintText() {
       this.touchType = "PaintText";
+      this.currentStatus = "文字画笔";
     },
     // 橡皮擦
     showEraser() {
       this.isEraser = !this.isEraser;
     },
     eraserStart() {
-      //绘制矩形
       this.ctx.beginPath();
       this.ctx.rect(0, 0, 20, 20);
       this.ctx.closePath();
@@ -467,7 +563,13 @@ export default {
     },
     // 清除画布
     clearPalette() {
-      this.ctx.clearRect(0, 0, 300, 150);
+      this.clearTimes++;
+      this.ctx.clearRect(
+        0,
+        0,
+        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+      );
     },
     // 将画布转为图片
     savePalette(type = "png") {
@@ -477,11 +579,20 @@ export default {
         this.lastBase64 = this.cans.toDataURL("image/jpeg", 1);
       }
       this.$emit("savePalette", this.lastBase64);
+    },
+    showBar() {
+      if (!this.isShowBar) {
+        this.$refs.showBar.style[transformKey] = "translate3d(0,0,0)";
+        this.isShowBar = true;
+      } else {
+        this.$refs.showBar.style[transformKey] = "translate3d(0,100%,0)";
+        this.isShowBar = false;
+      }
     }
   }
 };
 </script>
-<style scoped>
+<style>
 * {
   margin: 0px;
 }
@@ -532,5 +643,52 @@ export default {
   left: 0px;
   top: 0px;
   z-index: 1;
+}
+.palette .showBar {
+  position: fixed;
+  left: 0px;
+  bottom: 0px;
+  width: 100%;
+  z-index: 99;
+  transform: translate3d(0, 100%, 0);
+  background-color: white;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+.palette .showBar .showBar_close {
+  position: absolute;
+  right: 0px;
+  top: -15px;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 4px solid #fed640;
+  background-color: white;
+  color: #fed640;
+  font-size: 20px;
+  line-height: 22px;
+}
+.palette .showBar .showBar_title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.palette .showBar .showBar_wrapper {
+  max-height: 500px;
+  overflow: auto;
+}
+.palette .showBar .showBar_wrapper button {
+  border: none;
+  padding: 5px 15px;
+  background-color: #fed640;
+  border-radius: 20px;
+  color: white;
+}
+.palette .showBar .showBar_wrapper button:focus {
+  outline: none;
+}
+.palette .showBar .showBar_wrapper .showBar_item {
+  padding: 5px 15px;
+  text-align: left;
 }
 </style>
