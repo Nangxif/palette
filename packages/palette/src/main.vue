@@ -1,28 +1,45 @@
 <template>
   <div class="palette">
-    <div class="palette_wrapper" ref="palette_wrapper">
+    <div
+      class="palette_wrapper"
+      ref="palette_wrapper"
+      :style="
+        `width:${canvasStyles.width}px;height:${canvasStyles.height}px;border:${canvasStyles.borderStyle} ${canvasStyles.borderWidth}px ${canvasStyles.borderColor};`
+      "
+    >
       <div
         class="eraser"
         @touchstart.stop="eraserStart"
         @touchmove.stop
         @touchend.stop="eraserEnd"
+        @mousedown.stop="eraserStart"
+        @mousemove.stop
+        @mouseup.stop="eraserEnd"
         ref="eraser"
         v-if="isEraser"
+        :style="
+          `width:${eraserOptions.size}px;height:${
+            eraserOptions.size
+          }px;background-color:${eraserOptions.backgroundColor};${
+            eraserOptions.isRect ? '' : 'border-radius:50%;'
+          }`
+        "
       ></div>
-      <canvas ref="palette"></canvas>
+      <canvas
+        ref="palette"
+        :width="canvasStyles.width - 2 * canvasStyles.borderWidth"
+        :height="canvasStyles.height - 2 * canvasStyles.borderWidth"
+      ></canvas>
     </div>
-    <div v-if="showbarOption">
-      <button type="button" @click="clearPalette" v-if="showbarOption.clearBtn">
+    当前画笔状态：{{ currentStatus }}
+    <div>
+      <button type="button" @click="clearPalette">
         清除
       </button>
-      <button
-        type="button"
-        @click="savePalette(showbarOption.save)"
-        v-if="showbarOption.saveBtn"
-      >
+      <button type="button" @click="savePalette()">
         生成图片
       </button>
-      <button type="button" @click="paintLine" v-if="showbarOption.lineBtn">
+      <button type="button" @click="paintLine">
         画直线
       </button>
       <button type="button" @click="paintIrregularPolygon('Hollow')">
@@ -33,6 +50,7 @@
       </button>
       <button type="button" @click="paintCircle">画圆形</button>
       <button type="button" @click="paintRectangle">画矩形</button>
+      <button type="button" @click="paintText">插入文字</button>
       <button type="button" @click="showEraser">橡皮擦</button>
     </div>
   </div>
@@ -42,6 +60,8 @@ const transformKey =
   document.body.style.transform === undefined
     ? "-webkit-transform"
     : "transform";
+const documentWidth = document.body.offsetWidth;
+const documentHeight = document.body.offsetHeight;
 export default {
   name: "palette",
   props: {
@@ -49,70 +69,88 @@ export default {
       type: String,
       default: ""
     },
-    showbarOption: {
+    // canvas样式
+    canvasStyle: {
       type: Object,
       default: () => {
-        return {
-          clearBtn: true,
-          saveBtn: "png",
-          lineBtn: true
-        };
+        return {};
       }
     },
-    fillStyle: {
+    // 全局默认颜色
+    defaultColor: {
       type: String,
-      default: "red"
+      default: "black"
+    },
+    // 全局默认线条宽度
+    defaultLineWidth: {
+      type: Number,
+      default: 10
+    },
+    // 橡皮擦样式
+    eraserOption: {
+      type: Object,
+      default: () => {
+        return {};
+      }
     }
   },
   data() {
     return {
+      canvasStyles: {
+        width: documentWidth,
+        height: documentHeight,
+        backgroundColor: "white",
+        borderStyle: "solid",
+        borderColor: "black",
+        borderWidth: 5
+      },
       cans: null,
       ctx: null,
+      currentStatus: "随便画",
       touchType: "Random",
       startNew: null, //当前点击的点
       startOld: [], //存放之前点过的历史点
       move: {}, //移动的点
       circle: null,
       rectangle: null,
+      text: null,
+      isTextEdit: false, //是否进入字体编辑状态
       isEraser: false,
+      eraserOptions: {
+        size: 20,
+        backgroundColor: "black",
+        isRect: false
+      },
       lastBase64: ""
     };
   },
   mounted() {
+    Object.assign(this.canvasStyles, this.canvasStyle);
+    Object.assign(this.eraserOptions, this.eraserOption);
+    console.log(documentHeight);
     this.init();
   },
   methods: {
     // 手绘
     startPoint(e) {
       const event = e || window.event;
-
       this.startNew = {
-        x:
-          event.targetTouches[0].clientX -
-          this.$refs.palette.getBoundingClientRect().left,
-        y:
-          event.targetTouches[0].clientY -
-          this.$refs.palette.getBoundingClientRect().top,
+        x: event.clientX
+          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
+          : event.targetTouches[0].clientX -
+            this.$refs.palette.getBoundingClientRect().left,
+        y: event.clientY
+          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
+          : event.targetTouches[0].clientY -
+            this.$refs.palette.getBoundingClientRect().top,
         isPaint: false
       };
       this.startOld.push(this.startNew);
 
       if (this.touchType == "Random") {
         this.ctx.beginPath();
-        this.ctx.strokeStyle = this.fillStyle;
-
-        this.ctx.arc(
-          this.startNew.x - 0.5,
-          this.startNew.y - 0.5,
-          0.5,
-          0,
-          360,
-          false
-        );
-        this.ctx.fillStyle = this.fillStyle;
-        this.ctx.fill();
-        this.ctx.lineWidth = 1;
-        this.ctx.moveTo(this.startNew.x - 1, this.startNew.y - 1);
+        this.ctx.lineWidth = this.defaultLineWidth;
+        this.ctx.moveTo(this.startNew.x, this.startNew.y);
       }
 
       if (this.touchType == "PaintCircle") {
@@ -133,8 +171,34 @@ export default {
         this.$refs.palette_wrapper.appendChild(this.rectangle);
       }
 
+      if (this.touchType == "PaintText") {
+        this.isTextEdit = true;
+        this.text = document.createElement("div");
+        this.text.className = "text";
+        this.text.setAttribute("contenteditable", "true");
+        this.text.style[
+          transformKey
+        ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
+        this.$refs.palette_wrapper.appendChild(this.text);
+        this.$refs.palette_wrapper.removeEventListener(
+          "touchstart",
+          this.startPoint,
+          false
+        );
+        this.$refs.palette_wrapper.removeEventListener(
+          "mousedown",
+          this.startPoint,
+          false
+        );
+      }
+
       this.$refs.palette_wrapper.addEventListener(
         "touchmove",
+        this.movePoint,
+        false
+      );
+      this.$refs.palette_wrapper.addEventListener(
+        "mousemove",
         this.movePoint,
         false
       );
@@ -143,16 +207,19 @@ export default {
       const event = e || window.event;
       // this.startNew = null;
       this.move = {
-        x:
-          event.targetTouches[0].clientX -
-          this.$refs.palette.getBoundingClientRect().left,
-        y:
-          event.targetTouches[0].clientY -
-          this.$refs.palette.getBoundingClientRect().top
+        x: event.clientX
+          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
+          : event.targetTouches[0].clientX -
+            this.$refs.palette.getBoundingClientRect().left,
+        y: event.clientY
+          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
+          : event.targetTouches[0].clientY -
+            this.$refs.palette.getBoundingClientRect().top
       };
       if (this.touchType == "Random") {
-        this.ctx.fillStyle = "red";
-        this.ctx.lineTo(this.move.x - 1, this.move.y - 1);
+        this.ctx.lineWidth = this.defaultLineWidth;
+        this.ctx.fillStyle = this.defaultColor;
+        this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
       if (this.touchType == "PaintCircle") {
@@ -174,8 +241,31 @@ export default {
           this.startNew.y - this.move.y
         )}px`;
       }
+
+      if (this.touchType == "PaintText") {
+        this.text.style.width = `${Math.abs(this.startNew.x - this.move.x)}px`;
+        this.text.style.height = `${Math.abs(this.startNew.y - this.move.y)}px`;
+      }
+      this.startNew = null;
     },
     endPoint() {
+      if (this.touchType == "Random") {
+        if (this.startNew) {
+          this.ctx.beginPath();
+          this.ctx.strokeStyle = this.defaultColor;
+
+          this.ctx.arc(
+            this.startNew.x,
+            this.startNew.y,
+            this.defaultLineWidth / 2,
+            0,
+            360,
+            false
+          );
+          this.ctx.fillStyle = this.defaultColor;
+          this.ctx.fill();
+        }
+      }
       if (this.touchType == "PaintCircle") {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
@@ -207,6 +297,11 @@ export default {
       this.startNew = null;
       this.$refs.palette_wrapper.removeEventListener(
         "touchmove",
+        this.movePoint,
+        false
+      );
+      this.$refs.palette_wrapper.removeEventListener(
+        "mousemove",
         this.movePoint,
         false
       );
@@ -277,6 +372,10 @@ export default {
     paintRectangle() {
       this.touchType = "PaintRectangle";
     },
+    // 写文字
+    paintText() {
+      this.touchType = "PaintText";
+    },
     // 橡皮擦
     showEraser() {
       this.isEraser = !this.isEraser;
@@ -286,21 +385,24 @@ export default {
       this.ctx.beginPath();
       this.ctx.rect(0, 0, 20, 20);
       this.ctx.closePath();
-      this.ctx.fillStyle = "white";
+      this.ctx.fillStyle = this.backgroundColor;
       this.ctx.fill();
       // 每次打开橡皮擦得回到原处
       this.ctx.lineTo(0, 0);
       this.$refs.eraser.addEventListener("touchmove", this.eraserMove, false);
+      this.$refs.eraser.addEventListener("mousemove", this.eraserMove, false);
     },
     eraserMove(e) {
       const event = e || window.event;
       this.move = {
-        x:
-          event.targetTouches[0].clientX -
-          this.$refs.palette.getBoundingClientRect().left,
-        y:
-          event.targetTouches[0].clientY -
-          this.$refs.palette.getBoundingClientRect().top
+        x: event.clientX
+          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
+          : event.targetTouches[0].clientX -
+            this.$refs.palette.getBoundingClientRect().left,
+        y: event.clientY
+          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
+          : event.targetTouches[0].clientY -
+            this.$refs.palette.getBoundingClientRect().top
       };
       this.ctx.lineWidth = 20;
       this.ctx.strokeStyle = "white";
@@ -313,24 +415,32 @@ export default {
     eraserEnd(e) {
       const event = e || window.event;
       this.move = {
-        x:
-          event.changedTouches[0].clientX -
-          this.$refs.palette.getBoundingClientRect().left,
-        y:
-          event.changedTouches[0].clientY -
-          this.$refs.palette.getBoundingClientRect().top
+        x: event.clientX
+          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
+          : event.changedTouches[0].clientX -
+            this.$refs.palette.getBoundingClientRect().left,
+        y: event.clientY
+          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
+          : event.changedTouches[0].clientY -
+            this.$refs.palette.getBoundingClientRect().top
       };
       this.ctx.beginPath();
       this.ctx.rect(this.move.x - 10, this.move.y - 10, 20, 20);
       this.ctx.closePath();
-      this.ctx.fillStyle = "white";
+      this.ctx.fillStyle = this.backgroundColor;
       this.ctx.fill();
       this.$refs.eraser.removeEventListener(
         "touchmove",
         this.eraserMove,
         false
       );
+      this.$refs.eraser.removeEventListener(
+        "mousemove",
+        this.eraserMove,
+        false
+      );
     },
+    // 初始化画布
     init() {
       this.cans = this.$refs.palette;
       this.ctx = this.$refs.palette.getContext("2d");
@@ -340,7 +450,17 @@ export default {
         false
       );
       this.$refs.palette_wrapper.addEventListener(
+        "mousedown",
+        this.startPoint,
+        false
+      );
+      this.$refs.palette_wrapper.addEventListener(
         "touchend",
+        this.endPoint,
+        false
+      );
+      this.$refs.palette_wrapper.addEventListener(
+        "mouseup",
         this.endPoint,
         false
       );
@@ -349,6 +469,7 @@ export default {
     clearPalette() {
       this.ctx.clearRect(0, 0, 300, 150);
     },
+    // 将画布转为图片
     savePalette(type = "png") {
       if (type == "png") {
         this.lastBase64 = this.cans.toDataURL("image/png");
@@ -360,8 +481,12 @@ export default {
   }
 };
 </script>
-<style>
+<style scoped>
+* {
+  margin: 0px;
+}
 .palette_wrapper {
+  box-sizing: border-box;
   position: relative;
   width: 300px;
   height: 150px;
@@ -371,9 +496,9 @@ export default {
   position: absolute;
   left: 0px;
   top: 0px;
-  width: 20px;
+  /* width: 20px;
   height: 20px;
-  background-color: black;
+  background-color: black; */
   z-index: 3;
 }
 .palette_wrapper .circle {
@@ -392,6 +517,15 @@ export default {
   top: 0px;
   border: 1px solid black;
   z-index: 2;
+}
+.palette_wrapper .text {
+  box-sizing: border-box;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  border: 1px solid black;
+  z-index: 2;
+  overflow: hidden;
 }
 .palette_wrapper canvas {
   position: absolute;
