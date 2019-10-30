@@ -1,5 +1,14 @@
 <template>
   <div class="palette">
+    <p class="palette_tip">
+      Nangxi's drawing board<button
+        type="button"
+        class="tip_btn"
+        @click="showBar"
+      >
+        编辑面板
+      </button>
+    </p>
     <div
       class="palette_wrapper"
       ref="palette_wrapper"
@@ -42,12 +51,17 @@
           <button type="button" @click="nextPaint">
             前进
           </button>
+          <span
+            >共有{{ history.length }}条记录，当前在第{{
+              currectHistory + 1
+            }}条</span
+          >
         </div>
         <div v-if="showbarOption.clearBtn" class="showBar_item">
           <button type="button" @click="clearPalette">
             清除
           </button>
-          当前清理次数{{ clearTimes }}
+          <span>当前清理次数{{ clearTimes }}</span>
         </div>
         <div class="showBar_item">
           <button type="button" @click="paintRandom">
@@ -110,8 +124,8 @@ const transformKey =
   document.body.style.transform === undefined
     ? "-webkit-transform"
     : "transform";
-const documentWidth = document.body.offsetWidth;
-const documentHeight = document.body.offsetHeight;
+const documentWidth = document.body.offsetWidth - 20;
+const documentHeight = document.body.offsetHeight - 75;
 export default {
   name: "palette",
   props: {
@@ -170,7 +184,7 @@ export default {
         height: documentHeight,
         backgroundColor: "white",
         borderStyle: "solid",
-        borderColor: "black",
+        borderColor: "#fed640",
         borderWidth: 5
       },
       cans: null,
@@ -404,15 +418,29 @@ export default {
         this.movePoint,
         false
       );
-      this.history.push(
-        this.ctx.getImageData(
-          0,
-          0,
-          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
-        )
-      );
+
       this.currectHistory++;
+      if (this.currectHistory == this.history.length) {
+        this.history.push(
+          this.ctx.getImageData(
+            0,
+            0,
+            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          )
+        );
+      } else {
+        this.history = this.history
+          .slice(this.currectHistory)
+          .push(
+            this.ctx.getImageData(
+              0,
+              0,
+              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+            )
+          );
+      }
     },
     // 画直线
     paintLine() {
@@ -565,7 +593,17 @@ export default {
       );
       this.ctx.putImageData(this.history[--this.currectHistory], 0, 0);
     },
-    nextPaint() {},
+    nextPaint() {
+      if (this.currectHistory < this.history.length) {
+        this.ctx.clearRect(
+          0,
+          0,
+          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        );
+        this.ctx.putImageData(this.history[++this.currectHistory], 0, 0);
+      }
+    },
     // 初始化画布
     init() {
       this.cans = this.$refs.palette;
@@ -602,6 +640,8 @@ export default {
       );
       this.startNew = null;
       this.startOld = [];
+      this.history = [];
+      this.currectHistory = -1;
     },
     // 将画布转为图片
     savePalette(type = "png") {
@@ -617,7 +657,7 @@ export default {
         this.$refs.showBar.style[transformKey] = "translate3d(0,0,0)";
         this.isShowBar = true;
       } else {
-        this.$refs.showBar.style[transformKey] = "translate3d(0,100%,0)";
+        this.$refs.showBar.style[transformKey] = "translate3d(0,110%,0)";
         this.isShowBar = false;
       }
     }
@@ -628,9 +668,33 @@ export default {
 * {
   margin: 0px;
 }
+.palette {
+  overflow: hidden;
+}
+.palette_tip {
+  margin: 10px 15px;
+  padding: 10px 0px;
+  font-size: 24px;
+  line-height: 24px;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #eeeeee;
+}
+.tip_btn {
+  border: none;
+  padding: 5px;
+  background-color: #fed640;
+  border-radius: 20px;
+  color: white;
+  float: right;
+}
+.tip_btn:focus {
+  outline: none;
+}
 .palette_wrapper {
   box-sizing: border-box;
   position: relative;
+  margin: 0 auto;
   width: 300px;
   height: 150px;
   overflow: hidden;
@@ -682,10 +746,11 @@ export default {
   bottom: 0px;
   width: 100%;
   z-index: 99;
-  transform: translate3d(0, 100%, 0);
-  background-color: white;
+  transform: translate3d(0, 110%, 0);
+  background-color: #e0e0e0;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
+  transition: all 0.5s;
 }
 .palette .showBar .showBar_close {
   position: absolute;
@@ -700,10 +765,12 @@ export default {
   color: #fed640;
   font-size: 20px;
   line-height: 22px;
+  cursor: pointer;
 }
 .palette .showBar .showBar_title {
   font-size: 18px;
   font-weight: 600;
+  padding: 10px 0px;
 }
 .palette .showBar .showBar_wrapper {
   max-height: 500px;
@@ -715,12 +782,18 @@ export default {
   background-color: #fed640;
   border-radius: 20px;
   color: white;
+  float: left;
 }
 .palette .showBar .showBar_wrapper button:focus {
   outline: none;
 }
+
+.palette .showBar .showBar_wrapper span {
+  float: right;
+}
 .palette .showBar .showBar_wrapper .showBar_item {
   padding: 5px 15px;
   text-align: left;
+  overflow: hidden;
 }
 </style>
