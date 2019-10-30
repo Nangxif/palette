@@ -35,6 +35,14 @@
       <div class="showBar_close" @click="showBar">&times;</div>
       <p class="showBar_title">当前画笔状态：{{ currentStatus }}</p>
       <div class="showBar_wrapper">
+        <div class="showBar_item">
+          <button type="button" @click="prevPaint">
+            回撤
+          </button>
+          <button type="button" @click="nextPaint">
+            前进
+          </button>
+        </div>
         <div v-if="showbarOption.clearBtn" class="showBar_item">
           <button type="button" @click="clearPalette">
             清除
@@ -182,6 +190,8 @@ export default {
         backgroundColor: "black",
         isRect: false
       },
+      history: [], //存放历史操作数组
+      currectHistory: -1, //当前所在历史位置
       isShowBar: false,
       clearTimes: 0,
       lastBase64: ""
@@ -367,7 +377,7 @@ export default {
           2 * Math.PI
         );
         this.ctx.stroke();
-        // this.$refs.palette_wrapper.removeChild(this.circle);
+        this.$refs.palette_wrapper.removeChild(this.circle);
       }
       if (this.touchType == "PaintRectangle") {
         this.ctx.beginPath();
@@ -394,6 +404,15 @@ export default {
         this.movePoint,
         false
       );
+      this.history.push(
+        this.ctx.getImageData(
+          0,
+          0,
+          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        )
+      );
+      this.currectHistory++;
     },
     // 画直线
     paintLine() {
@@ -536,6 +555,17 @@ export default {
         false
       );
     },
+    // 撤回上一步，前进下一步
+    prevPaint() {
+      this.ctx.clearRect(
+        0,
+        0,
+        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+      );
+      this.ctx.putImageData(this.history[--this.currectHistory], 0, 0);
+    },
+    nextPaint() {},
     // 初始化画布
     init() {
       this.cans = this.$refs.palette;
@@ -570,6 +600,8 @@ export default {
         this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
         this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
       );
+      this.startNew = null;
+      this.startOld = [];
     },
     // 将画布转为图片
     savePalette(type = "png") {
