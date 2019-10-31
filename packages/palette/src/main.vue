@@ -18,12 +18,12 @@
     >
       <div
         class="eraser"
-        @touchstart.stop="eraserStart"
+        @touchstart.stop="startPoint"
         @touchmove.stop
-        @touchend.stop="eraserEnd"
-        @mousedown.stop="eraserStart"
+        @touchend.stop="endPoint"
+        @mousedown.stop="startPoint"
         @mousemove.stop
-        @mouseup.stop="eraserEnd"
+        @mouseup.stop="endPoint"
         ref="eraser"
         v-if="isEraser"
         :style="
@@ -44,8 +44,15 @@
     <div class="historyBar" ref="historyBar">
       <div class="historyBar_close" @click="showHistory">&times;</div>
       <p class="historyBar_title">所有操作记录</p>
-      <div class="history_item" v-for="(item, index) in history" :key="index">
-        {{ item.time }}{{ item.text }}
+      <div class="history_wrapper scrollable">
+        <div
+          class="history_item"
+          v-for="(item, index) in history"
+          :key="index"
+          @click="goHistory(index)"
+        >
+          {{ item.time }}{{ item.text }}
+        </div>
       </div>
     </div>
     <!-- 编辑画板 -->
@@ -200,6 +207,8 @@ export default {
       ctx: null,
       currentStatus: "普通画笔",
       touchType: "Random",
+      preCurrentStatus: "",
+      preTouchType: "",
       startNew: null, //当前点击的点
       startOld: [], //存放之前点过的历史点
       move: {}, //移动的点
@@ -219,7 +228,8 @@ export default {
         { operation: "Random", text: "画了一条不规则线" },
         { operation: "PaintCircle", text: "画了一个圆" },
         { operation: "PaintRectangle", text: "画了一个矩形" },
-        { operation: "PaintText", text: "插入文本" }
+        { operation: "PaintText", text: "插入文本" },
+        { operation: "Eraser", text: "擦除画板" }
       ],
       currectHistory: -1, //当前所在历史位置
       isShowBar: false,
@@ -250,10 +260,17 @@ export default {
       this.startOld.push(this.startNew);
 
       // 如果在触摸或者鼠标按下的时候是随机线的状态
-      if (this.touchType == "Random") {
+      if (this.touchType == "Random" || this.touchType == "Eraser") {
         this.ctx.beginPath();
         this.ctx.lineWidth = this.defaultLineWidth;
         this.ctx.moveTo(this.startNew.x, this.startNew.y);
+        if (this.touchType == "Eraser") {
+          this.ctx.lineWidth = this.eraserOptions.size;
+          this.ctx.strokeStyle = this.canvasStyles.backgroundColor;
+        } else {
+          this.ctx.lineWidth = this.defaultLineWidth;
+          this.ctx.strokeStyle = this.defaultColor;
+        }
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
       if (this.touchType == "PaintCircle") {
@@ -324,9 +341,41 @@ export default {
       if (this.startNew.x != this.move.x || this.startNew.y != this.move.y) {
         this.startOld[this.startOld.length - 1].isPaint = true;
       }
-      if (this.touchType == "Random") {
-        this.ctx.lineWidth = this.defaultLineWidth;
-        this.ctx.fillStyle = this.defaultColor;
+      if (this.touchType == "Random" || this.touchType == "Eraser") {
+        if (this.touchType == "Eraser") {
+          if (this.move.x <= this.$refs.eraser.offsetWidth / 2) {
+            this.move.x = this.$refs.eraser.offsetWidth / 2;
+          }
+          if (this.move.y <= this.$refs.eraser.offsetHeight / 2) {
+            this.move.y = this.$refs.eraser.offsetHeight / 2;
+          }
+          if (
+            this.move.x >=
+            this.canvasStyles.width -
+              2 * this.canvasStyles.borderWidth -
+              this.$refs.eraser.offsetWidth / 2
+          ) {
+            this.move.x =
+              this.canvasStyles.width -
+              2 * this.canvasStyles.borderWidth -
+              this.$refs.eraser.offsetWidth / 2;
+          }
+
+          if (
+            this.move.y >=
+            this.canvasStyles.height -
+              2 * this.canvasStyles.borderWidth -
+              this.$refs.eraser.offsetHeight / 2
+          ) {
+            this.move.y =
+              this.canvasStyles.height -
+              2 * this.canvasStyles.borderWidth -
+              this.$refs.eraser.offsetHeight / 2;
+          }
+          this.$refs.eraser.style[transformKey] = `translate3d(${this.move.x -
+            this.eraserOptions.size / 2}px,${this.move.y -
+            this.eraserOptions.size / 2}px,0)`;
+        }
         this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
@@ -555,65 +604,15 @@ export default {
     // 橡皮擦
     showEraser() {
       this.isEraser = !this.isEraser;
-    },
-    eraserStart() {
-      this.ctx.beginPath();
-      this.ctx.rect(0, 0, 20, 20);
-      this.ctx.closePath();
-      this.ctx.fillStyle = this.backgroundColor;
-      this.ctx.fill();
-      // 每次打开橡皮擦得回到原处
-      this.ctx.lineTo(0, 0);
-      this.$refs.eraser.addEventListener("touchmove", this.eraserMove, false);
-      this.$refs.eraser.addEventListener("mousemove", this.eraserMove, false);
-    },
-    eraserMove(e) {
-      const event = e || window.event;
-      this.move = {
-        x: event.clientX
-          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
-          : event.targetTouches[0].clientX -
-            this.$refs.palette.getBoundingClientRect().left,
-        y: event.clientY
-          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
-          : event.targetTouches[0].clientY -
-            this.$refs.palette.getBoundingClientRect().top
-      };
-      this.ctx.lineWidth = 20;
-      this.ctx.strokeStyle = "white";
-      this.ctx.lineTo(this.move.x, this.move.y);
-      this.ctx.stroke();
-      this.$refs.eraser.style[transformKey] = `translate3d(${this.move.x -
-        10}px,${this.move.y - 10}px,0)`;
-    },
-    // 橡皮拿起的时候不仅要禁止touchmove，还要在橡皮的位置画白色区域
-    eraserEnd(e) {
-      const event = e || window.event;
-      this.move = {
-        x: event.clientX
-          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
-          : event.changedTouches[0].clientX -
-            this.$refs.palette.getBoundingClientRect().left,
-        y: event.clientY
-          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
-          : event.changedTouches[0].clientY -
-            this.$refs.palette.getBoundingClientRect().top
-      };
-      this.ctx.beginPath();
-      this.ctx.rect(this.move.x - 10, this.move.y - 10, 20, 20);
-      this.ctx.closePath();
-      this.ctx.fillStyle = this.backgroundColor;
-      this.ctx.fill();
-      this.$refs.eraser.removeEventListener(
-        "touchmove",
-        this.eraserMove,
-        false
-      );
-      this.$refs.eraser.removeEventListener(
-        "mousemove",
-        this.eraserMove,
-        false
-      );
+      if (this.isEraser) {
+        this.preCurrentStatus = this.currentStatus;
+        this.preTouchType = this.touchType;
+        this.currentStatus = "橡皮擦";
+        this.touchType = "Eraser";
+      } else {
+        this.currentStatus = this.preCurrentStatus;
+        this.touchType = this.preTouchType;
+      }
     },
     // 撤回上一步，前进下一步
     prevPaint() {
@@ -642,6 +641,17 @@ export default {
       } else {
         this.currectHistory = this.history.length - 1;
       }
+    },
+    // 跳转到某一条历史记录
+    goHistory(index) {
+      this.ctx.clearRect(
+        0,
+        0,
+        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+      );
+      this.ctx.putImageData(this.history[index].data, 0, 0);
+      this.currectHistory = index;
     },
     // 初始化画布
     init() {
@@ -889,8 +899,13 @@ export default {
   color: #fed640;
   border-bottom: 2px solid #fed640;
 }
+.palette .historyBar .history_wrapper {
+  width: 100%;
+  max-height: 80vh;
+  overflow: auto;
+}
 .palette .historyBar .history_item {
-  padding: 0px 15px;
+  padding: 5px 15px;
   color: #fed640;
   text-align: left;
 }
