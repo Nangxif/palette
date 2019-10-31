@@ -40,10 +40,19 @@
         :height="canvasStyles.height - 2 * canvasStyles.borderWidth"
       ></canvas>
     </div>
+    <!-- 历史记录 -->
+    <div class="historyBar" ref="historyBar">
+      <div class="historyBar_close" @click="showHistory">&times;</div>
+      <p class="historyBar_title">所有操作记录</p>
+      <div class="history_item" v-for="(item, index) in history" :key="index">
+        {{ item.time }}{{ item.text }}
+      </div>
+    </div>
+    <!-- 编辑画板 -->
     <div class="showBar" ref="showBar">
       <div class="showBar_close" @click="showBar">&times;</div>
       <p class="showBar_title">当前画笔状态：{{ currentStatus }}</p>
-      <div class="showBar_wrapper">
+      <div class="showBar_wrapper scrollable">
         <div class="showBar_item">
           <button type="button" @click="prevPaint">
             回撤
@@ -51,10 +60,10 @@
           <button type="button" @click="nextPaint">
             前进
           </button>
-          <span
-            >共有{{ history.length }}条记录，当前在第{{
+          <span style="font-size:14px;" @click="showHistory"
+            >共有{{ history.length }}条记录，当前第{{
               currectHistory + 1
-            }}条</span
+            }}条<span style="color:#fed640;">>></span></span
           >
         </div>
         <div v-if="showbarOption.clearBtn" class="showBar_item">
@@ -204,7 +213,14 @@ export default {
         backgroundColor: "black",
         isRect: false
       },
+      isHistory: false, //是否显示历史记录
       history: [], //存放历史操作数组
+      historyTextArr: [
+        { operation: "Random", text: "画了一条不规则线" },
+        { operation: "PaintCircle", text: "画了一个圆" },
+        { operation: "PaintRectangle", text: "画了一个矩形" },
+        { operation: "PaintText", text: "插入文本" }
+      ],
       currectHistory: -1, //当前所在历史位置
       isShowBar: false,
       clearTimes: 0,
@@ -214,7 +230,6 @@ export default {
   mounted() {
     Object.assign(this.canvasStyles, this.canvasStyle);
     Object.assign(this.eraserOptions, this.eraserOption);
-    console.log(documentHeight);
     this.init();
   },
   methods: {
@@ -234,12 +249,13 @@ export default {
       };
       this.startOld.push(this.startNew);
 
+      // 如果在触摸或者鼠标按下的时候是随机线的状态
       if (this.touchType == "Random") {
         this.ctx.beginPath();
         this.ctx.lineWidth = this.defaultLineWidth;
         this.ctx.moveTo(this.startNew.x, this.startNew.y);
       }
-
+      // 如果在触摸或者鼠标按下的时候是画圆的状态
       if (this.touchType == "PaintCircle") {
         this.circle = document.createElement("div");
         this.circle.className = "circle";
@@ -248,7 +264,7 @@ export default {
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
         this.$refs.palette_wrapper.appendChild(this.circle);
       }
-
+      // 如果在触摸或者鼠标按下的时候是画矩形的状态
       if (this.touchType == "PaintRectangle") {
         this.rectangle = document.createElement("div");
         this.rectangle.className = "rectangle";
@@ -303,6 +319,11 @@ export default {
           : event.targetTouches[0].clientY -
             this.$refs.palette.getBoundingClientRect().top
       };
+      // 如果鼠标按下或者触摸事件被触发，那么isPaint就不能为false，因为这个点不可能成为不规则折线的折点了
+      // 这一块，谷歌浏览器的mousedown和mousemove一起执行了，很奇怪，所以通过判断mousedown和mousemove的位置是否相同来判断是否真正触发mousemove
+      if (this.startNew.x != this.move.x || this.startNew.y != this.move.y) {
+        this.startOld[this.startOld.length - 1].isPaint = true;
+      }
       if (this.touchType == "Random") {
         this.ctx.lineWidth = this.defaultLineWidth;
         this.ctx.fillStyle = this.defaultColor;
@@ -420,41 +441,53 @@ export default {
       );
 
       this.currectHistory++;
+      let t = new Date();
       if (this.currectHistory == this.history.length) {
-        this.history.push(
-          this.ctx.getImageData(
+        this.history.push({
+          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          text: this.historyTextArr.find(item => {
+            return item.operation == this.touchType;
+          }).text,
+          data: this.ctx.getImageData(
             0,
             0,
             this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
             this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
           )
-        );
+        });
       } else {
-        this.history = this.history
-          .slice(this.currectHistory)
-          .push(
-            this.ctx.getImageData(
-              0,
-              0,
-              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
-            )
-          );
+        // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
+        this.history = this.history.slice(this.currectHistory).push({
+          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          text: this.historyTextArr.find(item => {
+            return item.operation == this.touchType;
+          }).text,
+          data: this.ctx.getImageData(
+            0,
+            0,
+            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          )
+        });
       }
     },
     // 画直线
     paintLine() {
-      let canuse = this.startOld.findIndex(value => {
-        return !value.isPaint;
+      // 这里不能用map，用map过滤出来的数组元素个数还是跟原数组一样，除非在下面有做处理
+      let canuse = this.startOld.filter(item => {
+        if (!item.isPaint) return item;
       });
       // 如果不满足两个活跃的点
-      if (canuse == -1 || this.startOld.length - 1 - canuse < 1) {
+      if (canuse.length < 2) {
         this.$emit("paintLine", "You need at least two active points");
         console.log("You need at least two active points");
         return;
       }
-      let canuseArr = this.startOld.slice(canuse);
-      canuseArr.forEach((item, index, arr) => {
+      canuse.forEach((item, index, arr) => {
         this.ctx.beginPath();
         if (index < arr.length - 1) {
           this.ctx.moveTo(item.x, item.y);
@@ -469,20 +502,19 @@ export default {
     },
     // 画闭合多边形
     paintIrregularPolygon(type = "Hollow") {
-      let canuse = this.startOld.findIndex(value => {
-        return !value.isPaint;
+      let canuse = this.startOld.filter(item => {
+        if (!item.isPaint) return item;
       });
       // 如果不满足三个活跃的点
-      let canuseArr = this.startOld.slice(canuse);
-      if (canuseArr.length < 3) {
+      if (canuse.length < 3) {
         this.$emit("paintLine", "You need at least three active points");
         console.log("You need at least three active points");
         return;
       }
       this.ctx.beginPath();
-      this.ctx.moveTo(canuseArr[0].x, canuseArr[0].y);
-      canuseArr[0].isPaint = true;
-      canuseArr.forEach((item, index, arr) => {
+      this.ctx.moveTo(canuse[0].x, canuse[0].y);
+      canuse[0].isPaint = true;
+      canuse.forEach((item, index, arr) => {
         if (index !== 0 && index < arr.length) {
           this.ctx.lineTo(item.x, item.y);
         } else {
@@ -585,23 +617,30 @@ export default {
     },
     // 撤回上一步，前进下一步
     prevPaint() {
-      this.ctx.clearRect(
-        0,
-        0,
-        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
-      );
-      this.ctx.putImageData(this.history[--this.currectHistory], 0, 0);
-    },
-    nextPaint() {
-      if (this.currectHistory < this.history.length) {
+      if (this.currectHistory > -1) {
+        //历史记录位置不能小于原来起始位
         this.ctx.clearRect(
           0,
           0,
           this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
           this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
         );
-        this.ctx.putImageData(this.history[++this.currectHistory], 0, 0);
+        this.ctx.putImageData(this.history[--this.currectHistory].data, 0, 0);
+      } else {
+        this.currectHistory = -1;
+      }
+    },
+    nextPaint() {
+      if (this.currectHistory < this.history.length - 1) {
+        this.ctx.clearRect(
+          0,
+          0,
+          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        );
+        this.ctx.putImageData(this.history[++this.currectHistory].data, 0, 0);
+      } else {
+        this.currectHistory = this.history.length - 1;
       }
     },
     // 初始化画布
@@ -652,6 +691,7 @@ export default {
       }
       this.$emit("savePalette", this.lastBase64);
     },
+    // 显示编辑画板
     showBar() {
       if (!this.isShowBar) {
         this.$refs.showBar.style[transformKey] = "translate3d(0,0,0)";
@@ -659,6 +699,18 @@ export default {
       } else {
         this.$refs.showBar.style[transformKey] = "translate3d(0,110%,0)";
         this.isShowBar = false;
+      }
+    },
+    // 显示历史记录
+    showHistory() {
+      // 先关闭编辑画板
+      this.showBar();
+      if (!this.isHistory) {
+        this.$refs.historyBar.style[transformKey] = "translate3d(0,0,0)";
+        this.isHistory = true;
+      } else {
+        this.$refs.historyBar.style[transformKey] = "translate3d(100%,0,0)";
+        this.isHistory = false;
       }
     }
   }
@@ -747,7 +799,7 @@ export default {
   width: 100%;
   z-index: 99;
   transform: translate3d(0, 110%, 0);
-  background-color: #e0e0e0;
+  background-color: rgba(0, 0, 0, 0.4);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   transition: all 0.5s;
@@ -761,7 +813,7 @@ export default {
   height: 30px;
   border-radius: 50%;
   border: 4px solid #fed640;
-  background-color: white;
+  background-color: rgba(0, 0, 0, 0.4);
   color: #fed640;
   font-size: 20px;
   line-height: 22px;
@@ -773,7 +825,7 @@ export default {
   padding: 10px 0px;
 }
 .palette .showBar .showBar_wrapper {
-  max-height: 500px;
+  max-height: 400px;
   overflow: auto;
 }
 .palette .showBar .showBar_wrapper button {
@@ -783,6 +835,7 @@ export default {
   border-radius: 20px;
   color: white;
   float: left;
+  margin-right: 5px;
 }
 .palette .showBar .showBar_wrapper button:focus {
   outline: none;
@@ -790,10 +843,55 @@ export default {
 
 .palette .showBar .showBar_wrapper span {
   float: right;
+  line-height: 28px;
 }
 .palette .showBar .showBar_wrapper .showBar_item {
-  padding: 5px 15px;
+  padding: 5px 0px;
+  margin: 0px 15px;
   text-align: left;
   overflow: hidden;
+  border-bottom: 1px solid #fed640;
+}
+/* 历史记录 */
+.palette .historyBar {
+  margin: auto;
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 99;
+  transform: translate3d(100%, 0, 0);
+  transition: all 0.5s;
+}
+.palette .historyBar .historyBar_close {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 4px solid #fed640;
+  background-color: rgba(0, 0, 0, 0.4);
+  color: #fed640;
+  font-size: 20px;
+  line-height: 22px;
+  cursor: pointer;
+}
+.palette .historyBar .historyBar_title {
+  margin: 15px;
+  padding: 10px 5px;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: left;
+  color: #fed640;
+  border-bottom: 2px solid #fed640;
+}
+.palette .historyBar .history_item {
+  padding: 0px 15px;
+  color: #fed640;
+  text-align: left;
 }
 </style>
