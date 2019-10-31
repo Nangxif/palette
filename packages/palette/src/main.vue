@@ -624,7 +624,12 @@ export default {
           this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
           this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
         );
-        this.ctx.putImageData(this.history[--this.currectHistory].data, 0, 0);
+        --this.currectHistory;
+        if (this.currectHistory == -1) {
+          this.ctx.putImageData(this.history[0].data, 0, 0);
+        } else {
+          this.ctx.putImageData(this.history[this.currectHistory].data, 0, 0);
+        }
       } else {
         this.currectHistory = -1;
       }
