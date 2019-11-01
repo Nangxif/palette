@@ -215,7 +215,7 @@ export default {
       circle: null,
       rectangle: null,
       text: null,
-      isTextEdit: false, //是否进入字体编辑状态
+      isEdit: false, //是否进入编辑状态
       isEraser: false,
       eraserOptions: {
         size: 20,
@@ -273,9 +273,18 @@ export default {
         }
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
-      if (this.touchType == "PaintCircle") {
+      if (this.touchType == "PaintCircle" && !this.isEdit) {
         this.circle = document.createElement("div");
+        this.circle.addEventListener("touchstart", this.startPoint, false);
+        this.circle.addEventListener("touchend", this.endPoint, false);
+        this.circle.addEventListener("mousedown", this.startPoint, false);
+        this.circle.addEventListener("mouseup", this.endPoint, false);
         this.circle.className = "circle";
+        let s = document.createElement("span");
+        s.addEventListener("click", this.closeEdit, false);
+        this.circle.appendChild(s);
+        let text = document.createTextNode("x");
+        this.circle.firstChild.appendChild(text);
         this.circle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
@@ -283,6 +292,7 @@ export default {
       }
       // 如果在触摸或者鼠标按下的时候是画矩形的状态
       if (this.touchType == "PaintRectangle") {
+        this.isEdit = true;
         this.rectangle = document.createElement("div");
         this.rectangle.className = "rectangle";
         this.rectangle.style[
@@ -292,7 +302,7 @@ export default {
       }
 
       if (this.touchType == "PaintText") {
-        this.isTextEdit = true;
+        this.isEdit = true;
         this.text = document.createElement("div");
         this.text.className = "text";
         this.text.setAttribute("contenteditable", "true");
@@ -311,7 +321,6 @@ export default {
           false
         );
       }
-
       this.$refs.palette_wrapper.addEventListener(
         "touchmove",
         this.movePoint,
@@ -379,7 +388,7 @@ export default {
         this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
-      if (this.touchType == "PaintCircle") {
+      if (this.touchType == "PaintCircle" && !this.isEdit) {
         let r =
           Math.abs(this.startNew.x - this.move.x) >
           Math.abs(this.startNew.y - this.move.y)
@@ -388,6 +397,10 @@ export default {
         this.circle.style.cssText = `${transformKey}:translate3d(${this.startNew
           .x - r}px,${this.startNew.y - r}px,0);width:${2 * r}px;height:${2 *
           r}px;`;
+      } else if (this.touchType == "PaintCircle" && this.isEdit) {
+        this.circle.style[transformKey] = `translate3d(${this.move.x -
+          this.circle.offsetWidth / 2}px,${this.move.y -
+          this.circle.offsetWidth / 2}px,0)`;
       }
 
       // 正方形的拖动分四个角的拖动
@@ -432,6 +445,7 @@ export default {
       }
     },
     endPoint() {
+      console.log(1);
       if (this.touchType == "Random") {
         if (this.startNew) {
           this.ctx.beginPath();
@@ -449,19 +463,8 @@ export default {
           this.ctx.fill();
         }
       }
-      if (this.touchType == "PaintCircle") {
-        this.ctx.beginPath();
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "black";
-        this.ctx.arc(
-          this.startNew.x,
-          this.startNew.y,
-          this.circle.offsetWidth / 2,
-          0,
-          2 * Math.PI
-        );
-        this.ctx.stroke();
-        this.$refs.palette_wrapper.removeChild(this.circle);
+      if (this.touchType == "PaintCircle" && !this.isEdit) {
+        this.isEdit = true;
       }
       if (this.touchType == "PaintRectangle") {
         this.ctx.beginPath();
@@ -601,6 +604,25 @@ export default {
       this.touchType = "PaintText";
       this.currentStatus = "文字画笔";
     },
+    // 关闭编辑状态
+    closeEdit(e) {
+      e.stopPropagation();
+      this.isEdit = false;
+      if (this.touchType == "PaintCircle") {
+        this.ctx.beginPath();
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeStyle = "black";
+        this.ctx.arc(
+          this.move.x,
+          this.move.y,
+          this.circle.offsetWidth / 2,
+          0,
+          2 * Math.PI
+        );
+        this.ctx.stroke();
+        this.$refs.palette_wrapper.removeChild(this.circle);
+      }
+    },
     // 橡皮擦
     showEraser() {
       this.isEraser = !this.isEraser;
@@ -711,9 +733,50 @@ export default {
       if (!this.isShowBar) {
         this.$refs.showBar.style[transformKey] = "translate3d(0,0,0)";
         this.isShowBar = true;
+        // 打开编辑弹窗的时候不能对画板进行操作
+        this.$refs.palette_wrapper.removeEventListener(
+          "touchstart",
+          this.startPoint,
+          false
+        );
+        this.$refs.palette_wrapper.removeEventListener(
+          "mousedown",
+          this.startPoint,
+          false
+        );
+        this.$refs.palette_wrapper.removeEventListener(
+          "touchend",
+          this.endPoint,
+          false
+        );
+        this.$refs.palette_wrapper.removeEventListener(
+          "mouseup",
+          this.endPoint,
+          false
+        );
       } else {
         this.$refs.showBar.style[transformKey] = "translate3d(0,110%,0)";
         this.isShowBar = false;
+        this.$refs.palette_wrapper.addEventListener(
+          "touchstart",
+          this.startPoint,
+          false
+        );
+        this.$refs.palette_wrapper.addEventListener(
+          "mousedown",
+          this.startPoint,
+          false
+        );
+        this.$refs.palette_wrapper.addEventListener(
+          "touchend",
+          this.endPoint,
+          false
+        );
+        this.$refs.palette_wrapper.addEventListener(
+          "mouseup",
+          this.endPoint,
+          false
+        );
       }
     },
     // 显示历史记录
@@ -776,13 +839,32 @@ export default {
   z-index: 3;
 }
 .palette_wrapper .circle {
+  position: relative;
   box-sizing: border-box;
   position: absolute;
   left: 0px;
   top: 0px;
   border-radius: 50%;
   border: 1px solid black;
+  outline: 1px solid rgba(0, 0, 0, 0.2);
   z-index: 2;
+}
+.palette_wrapper .circle span {
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  box-sizing: border-box;
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #fed640;
+  background-color: white;
+  font-weight: 600;
+  color: #fed640;
+  line-height: 14px;
+  user-select: none;
+  cursor: pointer;
 }
 .palette_wrapper .rectangle {
   box-sizing: border-box;
