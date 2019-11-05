@@ -34,6 +34,21 @@
           }`
         "
       ></div>
+
+      <div
+        class="circle"
+        ref="circle"
+        v-show="touchType == 'PaintCircle' && isEdit"
+      >
+        <span
+          @click="closeEdit"
+          @touchstart.stop
+          @touchend.stop
+          @mousedown.stop
+          @mouseup.stop
+          >&times;</span
+        >
+      </div>
       <canvas
         ref="palette"
         :width="canvasStyles.width - 2 * canvasStyles.borderWidth"
@@ -212,10 +227,12 @@ export default {
       startNew: null, //当前点击的点
       startOld: [], //存放之前点过的历史点
       move: {}, //移动的点
+      endPoints: [], //该数组只存放最后两个结束的点
       circle: null,
       rectangle: null,
       text: null,
       isEdit: false, //是否进入编辑状态
+      isEditing: false, //是否正在编辑状态
       isEraser: false,
       eraserOptions: {
         size: 20,
@@ -258,7 +275,6 @@ export default {
         isPaint: false
       };
       this.startOld.push(this.startNew);
-
       // 如果在触摸或者鼠标按下的时候是随机线的状态
       if (this.touchType == "Random" || this.touchType == "Eraser") {
         this.ctx.beginPath();
@@ -274,21 +290,18 @@ export default {
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
       if (this.touchType == "PaintCircle" && !this.isEdit) {
-        this.circle = document.createElement("div");
-        this.circle.addEventListener("touchstart", this.startPoint, false);
-        this.circle.addEventListener("touchend", this.endPoint, false);
-        this.circle.addEventListener("mousedown", this.startPoint, false);
-        this.circle.addEventListener("mouseup", this.endPoint, false);
-        this.circle.className = "circle";
-        let s = document.createElement("span");
-        s.addEventListener("click", this.closeEdit, false);
-        this.circle.appendChild(s);
-        let text = document.createTextNode("x");
-        this.circle.firstChild.appendChild(text);
+        // this.circle = document.createElement("div");
+        // this.circle.className = "circle";
+        // let s = document.createElement("span");
+        // s.addEventListener("click", this.closeEdit, false);
+        // this.circle.appendChild(s);
+        // let text = document.createTextNode("x");
+        // this.circle.firstChild.appendChild(text);
         this.circle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
-        this.$refs.palette_wrapper.appendChild(this.circle);
+        this.isEdit = true;
+        // this.$refs.palette_wrapper.appendChild(this.circle);
       }
       // 如果在触摸或者鼠标按下的时候是画矩形的状态
       if (this.touchType == "PaintRectangle") {
@@ -335,20 +348,22 @@ export default {
     movePoint(e) {
       const event = e || window.event;
       // this.startNew = null;
-      this.move = {
-        x: event.clientX
-          ? event.clientX - this.$refs.palette.getBoundingClientRect().left
-          : event.targetTouches[0].clientX -
-            this.$refs.palette.getBoundingClientRect().left,
-        y: event.clientY
-          ? event.clientY - this.$refs.palette.getBoundingClientRect().top
-          : event.targetTouches[0].clientY -
-            this.$refs.palette.getBoundingClientRect().top
-      };
+
       // 如果鼠标按下或者触摸事件被触发，那么isPaint就不能为false，因为这个点不可能成为不规则折线的折点了
       // 这一块，谷歌浏览器的mousedown和mousemove一起执行了，很奇怪，所以通过判断mousedown和mousemove的位置是否相同来判断是否真正触发mousemove
       if (this.startNew.x != this.move.x || this.startNew.y != this.move.y) {
         this.startOld[this.startOld.length - 1].isPaint = true;
+        // 当鼠标或者手指真正发生移动的时候，才能开始给移动坐标数组添加数据
+        this.move = {
+          x: event.clientX
+            ? event.clientX - this.$refs.palette.getBoundingClientRect().left
+            : event.targetTouches[0].clientX -
+              this.$refs.palette.getBoundingClientRect().left,
+          y: event.clientY
+            ? event.clientY - this.$refs.palette.getBoundingClientRect().top
+            : event.targetTouches[0].clientY -
+              this.$refs.palette.getBoundingClientRect().top
+        };
       }
       if (this.touchType == "Random" || this.touchType == "Eraser") {
         if (this.touchType == "Eraser") {
@@ -388,7 +403,7 @@ export default {
         this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
-      if (this.touchType == "PaintCircle" && !this.isEdit) {
+      if (this.touchType == "PaintCircle" && this.isEdit) {
         let r =
           Math.abs(this.startNew.x - this.move.x) >
           Math.abs(this.startNew.y - this.move.y)
@@ -397,7 +412,7 @@ export default {
         this.circle.style.cssText = `${transformKey}:translate3d(${this.startNew
           .x - r}px,${this.startNew.y - r}px,0);width:${2 * r}px;height:${2 *
           r}px;`;
-      } else if (this.touchType == "PaintCircle" && this.isEdit) {
+      } else if (this.touchType == "PaintCircle" && !this.isEdit) {
         this.circle.style[transformKey] = `translate3d(${this.move.x -
           this.circle.offsetWidth / 2}px,${this.move.y -
           this.circle.offsetWidth / 2}px,0)`;
@@ -445,7 +460,19 @@ export default {
       }
     },
     endPoint() {
-      console.log(1);
+      console.log(this.isEdit);
+      if (this.isEdit) {
+        // 说明画圆之后没有移动
+        if (this.endPoints.length <= 1) {
+          this.endPoints = [this.move, this.move];
+          console.log(this.endPoints);
+        } else {
+          console.log(this.endPoints);
+          this.endPoints.shift();
+          this.endPoints.push(this.move);
+        }
+      }
+
       if (this.touchType == "Random") {
         if (this.startNew) {
           this.ctx.beginPath();
@@ -605,22 +632,39 @@ export default {
       this.currentStatus = "文字画笔";
     },
     // 关闭编辑状态
-    closeEdit(e) {
-      e.stopPropagation();
+    closeEdit() {
+      // 编辑状态改为false
       this.isEdit = false;
       if (this.touchType == "PaintCircle") {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
         this.ctx.strokeStyle = "black";
-        this.ctx.arc(
-          this.move.x,
-          this.move.y,
-          this.circle.offsetWidth / 2,
-          0,
-          2 * Math.PI
-        );
+        // 如果圆形发生了移动，那么本来要用move的坐标，但是move的坐标并不是圆心坐标，所以不能用，endPoints这个数组永远只有两个元素
+        if (
+          this.endPoints[0].x == this.endPoints[1].x &&
+          this.endPoints[0].y == this.endPoints[1].y
+        ) {
+          // 如果没有发生移动，那么可以用startOld里面的坐标
+          this.ctx.arc(
+            this.endPoints[1].x,
+            this.endPoints[1].y,
+            this.circle.offsetWidth / 2,
+            0,
+            2 * Math.PI
+          );
+        } else {
+          this.ctx.arc(
+            this.move.x,
+            this.move.y,
+            this.circle.offsetWidth / 2,
+            0,
+            2 * Math.PI
+          );
+        }
+
+        this.endPoints = [];
         this.ctx.stroke();
-        this.$refs.palette_wrapper.removeChild(this.circle);
+        // this.$refs.palette_wrapper.removeChild(this.circle);
       }
     },
     // 橡皮擦
@@ -683,6 +727,7 @@ export default {
     // 初始化画布
     init() {
       this.cans = this.$refs.palette;
+      this.circle = this.$refs.circle;
       this.ctx = this.$refs.palette.getContext("2d");
       this.$refs.palette_wrapper.addEventListener(
         "touchstart",
@@ -862,7 +907,7 @@ export default {
   background-color: white;
   font-weight: 600;
   color: #fed640;
-  line-height: 14px;
+  line-height: 16px;
   user-select: none;
   cursor: pointer;
 }
