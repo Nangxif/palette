@@ -518,39 +518,44 @@ export default {
         false
       );
 
-      this.currectHistory++;
-      let t = new Date();
-      if (this.currectHistory == this.history.length) {
-        this.history.push({
-          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
-          text: this.historyTextArr.find(item => {
-            return item.operation == this.touchType;
-          }).text,
-          data: this.ctx.getImageData(
-            0,
-            0,
-            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
-          )
-        });
-      } else {
-        // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
-        this.history = this.history.slice(this.currectHistory).push({
-          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
-          text: this.historyTextArr.find(item => {
-            return item.operation == this.touchType;
-          }).text,
-          data: this.ctx.getImageData(
-            0,
-            0,
-            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
-          )
-        });
+      if (
+        this.touchType !== "PaintCircle" &&
+        this.touchType !== "PaintRectangle"
+      ) {
+        this.currectHistory++;
+        let t = new Date();
+        if (this.currectHistory == this.history.length) {
+          this.history.push({
+            time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+              t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+            }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+            text: this.historyTextArr.find(item => {
+              return item.operation == this.touchType;
+            }).text,
+            data: this.ctx.getImageData(
+              0,
+              0,
+              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+            )
+          });
+        } else {
+          // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
+          this.history = this.history.slice(this.currectHistory).push({
+            time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+              t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+            }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+            text: this.historyTextArr.find(item => {
+              return item.operation == this.touchType;
+            }).text,
+            data: this.ctx.getImageData(
+              0,
+              0,
+              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+            )
+          });
+        }
       }
     },
     // 画直线
@@ -691,6 +696,42 @@ export default {
         this.endPoints = [];
         this.ctx.stroke();
       }
+
+      // 关闭编辑状态的时候保存历史
+      this.currectHistory++;
+      let t = new Date();
+      if (this.currectHistory == this.history.length) {
+        this.history.push({
+          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          text: this.historyTextArr.find(item => {
+            return item.operation == this.touchType;
+          }).text,
+          data: this.ctx.getImageData(
+            0,
+            0,
+            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          )
+        });
+      } else {
+        // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
+        this.history = this.history.slice(this.currectHistory).push({
+          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          text: this.historyTextArr.find(item => {
+            return item.operation == this.touchType;
+          }).text,
+          data: this.ctx.getImageData(
+            0,
+            0,
+            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          )
+        });
+      }
     },
     // 橡皮擦
     showEraser() {
@@ -707,7 +748,7 @@ export default {
     },
     // 撤回上一步，前进下一步
     prevPaint() {
-      if (this.currectHistory > -1) {
+      if (this.currectHistory > 0) {
         //历史记录位置不能小于原来起始位
         this.ctx.clearRect(
           0,
@@ -716,13 +757,13 @@ export default {
           this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
         );
         --this.currectHistory;
-        if (this.currectHistory == -1) {
+        if (this.currectHistory == 0) {
           this.ctx.putImageData(this.history[0].data, 0, 0);
         } else {
           this.ctx.putImageData(this.history[this.currectHistory].data, 0, 0);
         }
       } else {
-        this.currectHistory = -1;
+        this.currectHistory = 0;
       }
     },
     nextPaint() {
@@ -755,6 +796,20 @@ export default {
       this.circle = this.$refs.circle;
       this.rectangle = this.$refs.rectangle;
       this.ctx = this.$refs.palette.getContext("2d");
+      this.currectHistory++;
+      let t = new Date();
+      this.history.push({
+        time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
+          t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
+        }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+        text: "创建画布",
+        data: this.ctx.getImageData(
+          0,
+          0,
+          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
+          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        )
+      });
       this.$refs.palette_wrapper.addEventListener(
         "touchstart",
         this.startPoint,
