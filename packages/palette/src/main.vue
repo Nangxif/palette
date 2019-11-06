@@ -34,11 +34,27 @@
           }`
         "
       ></div>
-
+      <!-- 圆编辑框 -->
       <div
         class="circle"
         ref="circle"
         v-show="touchType == 'PaintCircle' && isEdit"
+      >
+        <span
+          @click="closeEdit"
+          @touchstart.stop
+          @touchend.stop
+          @mousedown.stop
+          @mouseup.stop
+          >&times;</span
+        >
+      </div>
+
+      <!-- 矩形编辑框 -->
+      <div
+        class="rectangle"
+        ref="rectangle"
+        v-show="touchType == 'PaintRectangle' && isEdit"
       >
         <span
           @click="closeEdit"
@@ -290,28 +306,17 @@ export default {
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
       if (this.touchType == "PaintCircle" && !this.isEditing) {
-        // this.circle = document.createElement("div");
-        // this.circle.className = "circle";
-        // let s = document.createElement("span");
-        // s.addEventListener("click", this.closeEdit, false);
-        // this.circle.appendChild(s);
-        // let text = document.createTextNode("x");
-        // this.circle.firstChild.appendChild(text);
         this.circle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
         this.isEdit = true;
-        // this.$refs.palette_wrapper.appendChild(this.circle);
       }
       // 如果在触摸或者鼠标按下的时候是画矩形的状态
-      if (this.touchType == "PaintRectangle") {
+      if (this.touchType == "PaintRectangle" && !this.isEditing) {
         this.isEdit = true;
-        this.rectangle = document.createElement("div");
-        this.rectangle.className = "rectangle";
         this.rectangle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
-        this.$refs.palette_wrapper.appendChild(this.rectangle);
       }
 
       if (this.touchType == "PaintText") {
@@ -404,6 +409,7 @@ export default {
         this.ctx.stroke();
       }
       if (this.touchType == "PaintCircle" && !this.isEditing) {
+        // 如果圆未处于编辑状态，那么可以调整圆的大小
         let r =
           Math.abs(this.startNew.x - this.move.x) >
           Math.abs(this.startNew.y - this.move.y)
@@ -413,13 +419,14 @@ export default {
           .x - r}px,${this.startNew.y - r}px,0);width:${2 * r}px;height:${2 *
           r}px;`;
       } else if (this.touchType == "PaintCircle" && this.isEditing) {
+        // 如果处于编辑状态，那么只能调整位置
         this.circle.style[transformKey] = `translate3d(${this.move.x -
           this.circle.offsetWidth / 2}px,${this.move.y -
           this.circle.offsetWidth / 2}px,0)`;
       }
 
       // 正方形的拖动分四个角的拖动
-      if (this.touchType == "PaintRectangle") {
+      if (this.touchType == "PaintRectangle" && !this.isEditing) {
         this.rectangle.style.width = `${Math.abs(
           this.startNew.x - this.move.x
         )}px`;
@@ -452,6 +459,10 @@ export default {
             this.rectangle.dataset.y = this.startNew.y;
           }
         }
+      } else if (this.touchType == "PaintRectangle" && this.isEditing) {
+        this.rectangle.style[transformKey] = `translate3d(${this.move.x -
+          this.rectangle.offsetWidth}px,${this.move.y -
+          this.rectangle.offsetHeight}px,0)`;
       }
 
       if (this.touchType == "PaintText") {
@@ -460,8 +471,6 @@ export default {
       }
     },
     endPoint() {
-      console.log(this.isEdit);
-
       if (this.touchType == "Random") {
         if (this.startNew) {
           this.ctx.beginPath();
@@ -484,27 +493,16 @@ export default {
         this.isEditing = true;
       }
       if (this.touchType == "PaintRectangle") {
-        this.ctx.beginPath();
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "black";
-        this.ctx.rect(
-          this.rectangle.dataset.x,
-          this.rectangle.dataset.y,
-          this.rectangle.offsetWidth,
-          this.rectangle.offsetHeight
-        );
-        this.ctx.stroke();
-        this.$refs.palette_wrapper.removeChild(this.rectangle);
+        this.isEdit = true;
+        this.isEditing = true;
       }
       if (this.isEditing) {
-        // 说明画圆之后没有移动
+        // 说明画圆或矩形之后没有移动
         if (this.endPoints.length <= 1) {
           this.endPoints = [this.move, this.move];
-          console.log(1, this.endPoints);
         } else {
           this.endPoints.shift();
           this.endPoints.push(this.move);
-          console.log(2, this.endPoints);
         }
       }
 
@@ -666,7 +664,32 @@ export default {
 
         this.endPoints = [];
         this.ctx.stroke();
-        // this.$refs.palette_wrapper.removeChild(this.circle);
+      }
+      // 关闭编辑状态画矩形
+      if (this.touchType == "PaintRectangle") {
+        this.ctx.beginPath();
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeStyle = "black";
+        if (
+          this.endPoints[0].x == this.endPoints[1].x &&
+          this.endPoints[0].y == this.endPoints[1].y
+        ) {
+          this.ctx.rect(
+            this.rectangle.dataset.x,
+            this.rectangle.dataset.y,
+            this.rectangle.offsetWidth,
+            this.rectangle.offsetHeight
+          );
+        } else {
+          this.ctx.rect(
+            this.move.x - this.rectangle.offsetWidth,
+            this.move.y - this.rectangle.offsetHeight,
+            this.rectangle.offsetWidth,
+            this.rectangle.offsetHeight
+          );
+        }
+        this.endPoints = [];
+        this.ctx.stroke();
       }
     },
     // 橡皮擦
@@ -730,6 +753,7 @@ export default {
     init() {
       this.cans = this.$refs.palette;
       this.circle = this.$refs.circle;
+      this.rectangle = this.$refs.rectangle;
       this.ctx = this.$refs.palette.getContext("2d");
       this.$refs.palette_wrapper.addEventListener(
         "touchstart",
@@ -920,6 +944,23 @@ export default {
   top: 0px;
   border: 1px solid black;
   z-index: 2;
+}
+.palette_wrapper .rectangle span {
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  box-sizing: border-box;
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #fed640;
+  background-color: white;
+  font-weight: 600;
+  color: #fed640;
+  line-height: 16px;
+  user-select: none;
+  cursor: pointer;
 }
 .palette_wrapper .text {
   box-sizing: border-box;
