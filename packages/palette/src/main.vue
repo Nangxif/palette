@@ -231,8 +231,8 @@ export default {
       circle: null,
       rectangle: null,
       text: null,
-      isEdit: false, //是否进入编辑状态
-      isEditing: false, //是否正在编辑状态
+      isEdit: false, //是否显示编辑框
+      isEditing: false, //是否进入编辑状态，编辑状态的时候不能重新绘画其他东西
       isEraser: false,
       eraserOptions: {
         size: 20,
@@ -289,7 +289,7 @@ export default {
         }
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
-      if (this.touchType == "PaintCircle" && !this.isEdit) {
+      if (this.touchType == "PaintCircle" && !this.isEditing) {
         // this.circle = document.createElement("div");
         // this.circle.className = "circle";
         // let s = document.createElement("span");
@@ -403,7 +403,7 @@ export default {
         this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
-      if (this.touchType == "PaintCircle" && this.isEdit) {
+      if (this.touchType == "PaintCircle" && !this.isEditing) {
         let r =
           Math.abs(this.startNew.x - this.move.x) >
           Math.abs(this.startNew.y - this.move.y)
@@ -412,7 +412,7 @@ export default {
         this.circle.style.cssText = `${transformKey}:translate3d(${this.startNew
           .x - r}px,${this.startNew.y - r}px,0);width:${2 * r}px;height:${2 *
           r}px;`;
-      } else if (this.touchType == "PaintCircle" && !this.isEdit) {
+      } else if (this.touchType == "PaintCircle" && this.isEditing) {
         this.circle.style[transformKey] = `translate3d(${this.move.x -
           this.circle.offsetWidth / 2}px,${this.move.y -
           this.circle.offsetWidth / 2}px,0)`;
@@ -461,17 +461,6 @@ export default {
     },
     endPoint() {
       console.log(this.isEdit);
-      if (this.isEdit) {
-        // 说明画圆之后没有移动
-        if (this.endPoints.length <= 1) {
-          this.endPoints = [this.move, this.move];
-          console.log(this.endPoints);
-        } else {
-          console.log(this.endPoints);
-          this.endPoints.shift();
-          this.endPoints.push(this.move);
-        }
-      }
 
       if (this.touchType == "Random") {
         if (this.startNew) {
@@ -490,8 +479,9 @@ export default {
           this.ctx.fill();
         }
       }
-      if (this.touchType == "PaintCircle" && !this.isEdit) {
+      if (this.touchType == "PaintCircle") {
         this.isEdit = true;
+        this.isEditing = true;
       }
       if (this.touchType == "PaintRectangle") {
         this.ctx.beginPath();
@@ -505,6 +495,17 @@ export default {
         );
         this.ctx.stroke();
         this.$refs.palette_wrapper.removeChild(this.rectangle);
+      }
+      if (this.isEditing) {
+        // 说明画圆之后没有移动
+        if (this.endPoints.length <= 1) {
+          this.endPoints = [this.move, this.move];
+          console.log(1, this.endPoints);
+        } else {
+          this.endPoints.shift();
+          this.endPoints.push(this.move);
+          console.log(2, this.endPoints);
+        }
       }
 
       this.startNew = null;
@@ -633,8 +634,9 @@ export default {
     },
     // 关闭编辑状态
     closeEdit() {
-      // 编辑状态改为false
+      // 关闭编辑框同时关闭编辑状态
       this.isEdit = false;
+      this.isEditing = false;
       if (this.touchType == "PaintCircle") {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
@@ -646,8 +648,8 @@ export default {
         ) {
           // 如果没有发生移动，那么可以用startOld里面的坐标
           this.ctx.arc(
-            this.endPoints[1].x,
-            this.endPoints[1].y,
+            this.startOld[this.startOld.length - 1].x,
+            this.startOld[this.startOld.length - 1].y,
             this.circle.offsetWidth / 2,
             0,
             2 * Math.PI
