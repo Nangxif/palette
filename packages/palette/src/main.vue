@@ -85,6 +85,7 @@
           {{ item.time }}{{ item.text }}
         </div>
       </div>
+      <div class="more"></div>
     </div>
     <!-- 编辑画板 -->
     <div class="showBar" ref="showBar">
@@ -163,6 +164,10 @@
           </button>
         </div>
       </div>
+    </div>
+    <!-- 生成图片 -->
+    <div class="images" @click.self="closeImage" v-if="lastBase64">
+      <img :src="lastBase64" ref="resultImg" />
     </div>
   </div>
 </template>
@@ -632,6 +637,7 @@ export default {
     },
     // 写文字
     paintText() {
+      // 画文字这块涉及到单行多行文字，文本框不够如何显示文字
       this.touchType = "PaintText";
       this.currentStatus = "文字画笔";
     },
@@ -790,6 +796,10 @@ export default {
       this.ctx.putImageData(this.history[index].data, 0, 0);
       this.currectHistory = index;
     },
+    // 关闭图片
+    closeImage() {
+      this.lastBase64 = "";
+    },
     // 初始化画布
     init() {
       this.cans = this.$refs.palette;
@@ -852,6 +862,13 @@ export default {
       } else if (type == "jpeg") {
         this.lastBase64 = this.cans.toDataURL("image/jpeg", 1);
       }
+      this.$nextTick(() => {
+        let timer = setTimeout(() => {
+          this.$refs.resultImg.style[transformKey] = `translate3d(0,0,0)`;
+          clearTimeout(timer);
+        }, 0);
+      });
+
       this.$emit("savePalette", this.lastBase64);
     },
     // 显示编辑画板
@@ -1105,6 +1122,14 @@ export default {
   transform: translate3d(100%, 0, 0);
   transition: all 0.5s;
 }
+.palette .historyBar .more {
+  margin: 0 auto;
+  width: 26px;
+  height: 29px;
+  background-image: url("./more.png");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
 .palette .historyBar .historyBar_close {
   position: absolute;
   right: 0px;
@@ -1131,12 +1156,36 @@ export default {
 }
 .palette .historyBar .history_wrapper {
   width: 100%;
-  max-height: 80vh;
+  height: 80vh;
   overflow: auto;
 }
 .palette .historyBar .history_item {
   padding: 5px 15px;
   color: #fed640;
   text-align: left;
+}
+/* 图片弹窗 */
+.palette .images {
+  margin: auto;
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 99;
+}
+.palette .images img {
+  margin: auto;
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
+  border: 5px solid #fed640;
+  background-color: white;
+  z-index: 100;
+  transform: translate3d(0, 120%, 0);
+  transition: all 0.5s;
 }
 </style>
