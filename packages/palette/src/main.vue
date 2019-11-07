@@ -862,6 +862,7 @@ export default {
       } else if (type == "jpeg") {
         this.lastBase64 = this.cans.toDataURL("image/jpeg", 1);
       }
+      // 生成图片弹出弹窗
       this.$nextTick(() => {
         let timer = setTimeout(() => {
           this.$refs.resultImg.style[transformKey] = `translate3d(0,0,0)`;
