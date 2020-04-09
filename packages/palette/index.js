@@ -1,7 +1,4 @@
-import Palette from "./src/main.vue";
-
-Palette.install = function(Vue) {
-  Vue.compoent(Palette.name, Palette);
-};
-
+import preventScroll from './util/preventScroll.js';
+preventScroll();
+import Palette from './src/palette.vue';
 export default Palette;

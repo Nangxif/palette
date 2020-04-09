@@ -1,10 +1,12 @@
 <template>
   <div class="palette">
     <p class="palette_tip">
-      Nangxi's drawing board<button
+      {{ paletteStyleCopy.title }}
+      <button
         type="button"
         class="tip_btn"
         @click="showBar"
+        :style="`background-color:${paletteStyleCopy.borderColor};`"
       >
         编辑面板
       </button>
@@ -13,7 +15,7 @@
       class="palette_wrapper"
       ref="palette_wrapper"
       :style="
-        `width:${canvasStyles.width}px;height:${canvasStyles.height}px;border:${canvasStyles.borderStyle} ${canvasStyles.borderWidth}px ${canvasStyles.borderColor};`
+        `width:${paletteStyleCopy.width}px;height:${paletteStyleCopy.height}px;border:${paletteStyleCopy.borderStyle} ${paletteStyleCopy.borderWidth}px ${paletteStyleCopy.borderColor};`
       "
     >
       <div
@@ -46,8 +48,9 @@
           @touchend.stop
           @mousedown.stop
           @mouseup.stop
-          >&times;</span
         >
+          &times;
+        </span>
       </div>
 
       <!-- 矩形编辑框 -->
@@ -62,13 +65,14 @@
           @touchend.stop
           @mousedown.stop
           @mouseup.stop
-          >&times;</span
         >
+          &times;
+        </span>
       </div>
       <canvas
         ref="palette"
-        :width="canvasStyles.width - 2 * canvasStyles.borderWidth"
-        :height="canvasStyles.height - 2 * canvasStyles.borderWidth"
+        :width="paletteStyleCopy.width - 2 * paletteStyleCopy.borderWidth"
+        :height="paletteStyleCopy.height - 2 * paletteStyleCopy.borderWidth"
       ></canvas>
     </div>
     <!-- 历史记录 -->
@@ -99,13 +103,12 @@
           <button type="button" @click="nextPaint">
             前进
           </button>
-          <span style="font-size:14px;" @click="showHistory"
-            >共有{{ history.length }}条记录，当前第{{
-              currectHistory + 1
-            }}条<span style="color:#fed640;">>></span></span
-          >
+          <span style="font-size:14px;" @click="showHistory">
+            共有{{ history.length }}条记录，当前第{{ currectHistory + 1 }}条
+            <span style="color:#fed640;">>></span>
+          </span>
         </div>
-        <div v-if="showbarOption.clearBtn" class="showBar_item">
+        <div v-if="showbarOptionCopy.clearBtn" class="showBar_item">
           <button type="button" @click="clearPalette">
             清除
           </button>
@@ -116,49 +119,52 @@
             普通画笔
           </button>
         </div>
-        <div v-if="showbarOption.lineBtn" class="showBar_item">
+        <div v-if="showbarOptionCopy.lineBtn" class="showBar_item">
           <button type="button" @click="paintLine">
             直线画笔
           </button>
         </div>
         <div
           class="showBar_item"
-          v-if="showbarOption.hollowIrregularPolygonBtn"
+          v-if="showbarOptionCopy.hollowIrregularPolygonBtn"
         >
           <button type="button" @click="paintIrregularPolygon('Hollow')">
             空心不规则多边形画笔
           </button>
         </div>
-        <div class="showBar_item" v-if="showbarOption.solidIrregularPolygonBtn">
+        <div
+          class="showBar_item"
+          v-if="showbarOptionCopy.solidIrregularPolygonBtn"
+        >
           <button type="button" @click="paintIrregularPolygon('Solid')">
             实心不规则多边形画笔
           </button>
         </div>
-        <div class="showBar_item" v-if="showbarOption.paintCircleBtn">
+        <div class="showBar_item" v-if="showbarOptionCopy.paintCircleBtn">
           <button type="button" @click="paintCircle">
             圆形画笔
           </button>
         </div>
-        <div class="showBar_item" v-if="showbarOption.paintRectangleBtn">
+        <div class="showBar_item" v-if="showbarOptionCopy.paintRectangleBtn">
           <button type="button" @click="paintRectangle">
             矩形画笔
           </button>
         </div>
-        <div class="showBar_item" v-if="showbarOption.paintTextBtn">
+        <div class="showBar_item" v-if="showbarOptionCopy.paintTextBtn">
           <button type="button" @click="paintText">
             插入文字
           </button>
         </div>
-        <div class="showBar_item" v-if="showbarOption.eraserBtn">
+        <div class="showBar_item" v-if="showbarOptionCopy.eraserBtn">
           <button type="button" @click="showEraser">
             橡皮擦
           </button>
         </div>
-        <div v-if="showbarOption.saveBtn.isShow" class="showBar_item">
+        <div v-if="showbarOptionCopy.saveBtn.isShow" class="showBar_item">
           <button
             type="button"
-            @click="savePalette(showbarOption.saveBtn.imageType)"
-            v-if="showbarOption.saveBtn.isShow"
+            @click="savePalette(showbarOptionCopy.saveBtn.imageType)"
+            v-if="showbarOptionCopy.saveBtn.isShow"
           >
             生成图片
           </button>
@@ -174,52 +180,31 @@
 <script>
 const transformKey =
   document.body.style.transform === undefined
-    ? "-webkit-transform"
-    : "transform";
-const documentWidth = document.body.offsetWidth - 20;
-const documentHeight = document.body.offsetHeight - 75;
+    ? '-webkit-transform'
+    : 'transform';
+// const documentWidth = document.body.clientWidth - 20;
+// const documentHeight = document.body.clientHeight - 75;//window.devicePixelRatio
+// console.log(document.body.clientHeight);
 export default {
-  name: "palette",
+  name: 'palette',
   props: {
     point: {
       type: String,
-      default: ""
+      default: ''
     },
+    // 展板显示的工具
     showbarOption: {
-      type: Object,
-      default: () => {
-        return {
-          clearBtn: true,
-          saveBtn: {
-            isShow: true,
-            imageType: "png"
-          },
-          lineBtn: true,
-          hollowIrregularPolygonBtn: true,
-          solidIrregularPolygonBtn: true,
-          paintCircleBtn: true,
-          paintRectangleBtn: true,
-          paintTextBtn: true,
-          eraserBtn: true
-        };
-      }
-    },
-    // canvas样式
-    canvasStyle: {
       type: Object,
       default: () => {
         return {};
       }
     },
-    // 全局默认颜色
-    defaultColor: {
-      type: String,
-      default: "black"
-    },
-    // 全局默认线条宽度
-    defaultLineWidth: {
-      type: Number,
-      default: 2
+    // 画板基础样式
+    paletteStyle: {
+      type: Object,
+      default: () => {
+        return {};
+      }
     },
     // 橡皮擦样式
     eraserOption: {
@@ -231,24 +216,41 @@ export default {
   },
   data() {
     return {
-      canvasStyles: {
-        width: documentWidth,
-        height: documentHeight,
-        backgroundColor: "white",
-        borderStyle: "solid",
-        borderColor: "#fed640",
-        borderWidth: 5
+      paletteStyleCopy: {
+        title: `Nangxi's drawing board`,
+        width: document.body.clientWidth - 20,
+        height: document.body.clientHeight - 75,
+        backgroundColor: 'white',
+        borderStyle: 'solid',
+        borderColor: '#fed640',
+        borderWidth: 5,
+        defaultColor: 'black', // 全局默认颜色
+        defaultLineWidth: 2 // 全局默认线条宽度
+      },
+      showbarOptionCopy: {
+        clearBtn: true,
+        saveBtn: {
+          isShow: true,
+          imageType: 'png'
+        },
+        lineBtn: true,
+        hollowIrregularPolygonBtn: true,
+        solidIrregularPolygonBtn: true,
+        paintCircleBtn: true,
+        paintRectangleBtn: true,
+        // paintTextBtn: false,
+        eraserBtn: true
       },
       cans: null,
       ctx: null,
-      currentStatus: "普通画笔",
-      touchType: "Random",
-      preCurrentStatus: "",
-      preTouchType: "",
+      currentStatus: '普通画笔', //画笔状态
+      touchType: 'Random',
+      preCurrentStatus: '',
+      preTouchType: '',
       startNew: null, //当前点击的点
       startOld: [], //存放之前点过的历史点
       move: {}, //移动的点
-      endPoints: [], //该数组只存放最后两个结束的点
+      endPoints: [], //该数组只存放最后两个结束的点，用于确定圆心或者矩形画完之后，有没有被移动过，进而确定圆心等用的是哪个数据
       circle: null,
       rectangle: null,
       text: null,
@@ -257,26 +259,27 @@ export default {
       isEraser: false,
       eraserOptions: {
         size: 20,
-        backgroundColor: "black",
-        isRect: false
+        backgroundColor: 'black',
+        isRect: false //是否是圆形的
       },
       isHistory: false, //是否显示历史记录
       history: [], //存放历史操作数组
       historyTextArr: [
-        { operation: "Random", text: "画了一条不规则线" },
-        { operation: "PaintCircle", text: "画了一个圆" },
-        { operation: "PaintRectangle", text: "画了一个矩形" },
-        { operation: "PaintText", text: "插入文本" },
-        { operation: "Eraser", text: "擦除画板" }
+        { operation: 'Random', text: '画了一条不规则线' },
+        { operation: 'PaintCircle', text: '画了一个圆' },
+        { operation: 'PaintRectangle', text: '画了一个矩形' },
+        { operation: 'PaintText', text: '插入文本' },
+        { operation: 'Eraser', text: '擦除画板' }
       ],
       currectHistory: -1, //当前所在历史位置
       isShowBar: false,
       clearTimes: 0,
-      lastBase64: ""
+      lastBase64: '' //最后生成的图片
     };
   },
   mounted() {
-    Object.assign(this.canvasStyles, this.canvasStyle);
+    Object.assign(this.paletteStyleCopy, this.paletteStyle);
+    Object.assign(this.showbarOptionCopy, this.showbarOption);
     Object.assign(this.eraserOptions, this.eraserOption);
     this.init();
   },
@@ -284,6 +287,7 @@ export default {
     // 手绘
     startPoint(e) {
       const event = e || window.event;
+      // 点击的时候，确认最先触摸的屏幕点
       this.startNew = {
         x: event.clientX
           ? event.clientX - this.$refs.palette.getBoundingClientRect().left
@@ -295,62 +299,65 @@ export default {
             this.$refs.palette.getBoundingClientRect().top,
         isPaint: false
       };
+      // 然后立马存放进历史
       this.startOld.push(this.startNew);
       // 如果在触摸或者鼠标按下的时候是随机线的状态
-      if (this.touchType == "Random" || this.touchType == "Eraser") {
+      if (this.touchType == 'Random' || this.touchType == 'Eraser') {
         this.ctx.beginPath();
-        this.ctx.lineWidth = this.defaultLineWidth;
+        this.ctx.lineWidth = this.paletteStyleCopy.defaultLineWidth;
         this.ctx.moveTo(this.startNew.x, this.startNew.y);
-        if (this.touchType == "Eraser") {
+        if (this.touchType == 'Eraser') {
           this.ctx.lineWidth = this.eraserOptions.size;
-          this.ctx.strokeStyle = this.canvasStyles.backgroundColor;
+          this.ctx.strokeStyle = this.paletteStyleCopy.backgroundColor;
         } else {
-          this.ctx.lineWidth = this.defaultLineWidth;
-          this.ctx.strokeStyle = this.defaultColor;
+          this.ctx.lineWidth = this.paletteStyleCopy.defaultLineWidth;
+          this.ctx.strokeStyle = this.paletteStyleCopy.defaultColor;
         }
       }
       // 如果在触摸或者鼠标按下的时候是画圆的状态
-      if (this.touchType == "PaintCircle" && !this.isEditing) {
+      if (this.touchType == 'PaintCircle' && !this.isEditing) {
+        // 定义初始圆的圆心位置
         this.circle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
         this.isEdit = true;
       }
       // 如果在触摸或者鼠标按下的时候是画矩形的状态
-      if (this.touchType == "PaintRectangle" && !this.isEditing) {
+      if (this.touchType == 'PaintRectangle' && !this.isEditing) {
         this.isEdit = true;
+        // 定义初始矩形左上角位置
         this.rectangle.style[
           transformKey
         ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
       }
 
-      if (this.touchType == "PaintText") {
-        this.isEdit = true;
-        this.text = document.createElement("div");
-        this.text.className = "text";
-        this.text.setAttribute("contenteditable", "true");
-        this.text.style[
-          transformKey
-        ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
-        this.$refs.palette_wrapper.appendChild(this.text);
-        this.$refs.palette_wrapper.removeEventListener(
-          "touchstart",
-          this.startPoint,
-          false
-        );
-        this.$refs.palette_wrapper.removeEventListener(
-          "mousedown",
-          this.startPoint,
-          false
-        );
-      }
+      // if (this.touchType == 'PaintText') {
+      //   this.isEdit = true;
+      //   this.text = document.createElement('div');
+      //   this.text.className = 'text';
+      //   this.text.setAttribute('contenteditable', 'true');
+      //   this.text.style[
+      //     transformKey
+      //   ] = `translate3d(${this.startNew.x}px,${this.startNew.y}px,0)`;
+      //   this.$refs.palette_wrapper.appendChild(this.text);
+      //   this.$refs.palette_wrapper.removeEventListener(
+      //     'touchstart',
+      //     this.startPoint,
+      //     false
+      //   );
+      //   this.$refs.palette_wrapper.removeEventListener(
+      //     'mousedown',
+      //     this.startPoint,
+      //     false
+      //   );
+      // }
       this.$refs.palette_wrapper.addEventListener(
-        "touchmove",
+        'touchmove',
         this.movePoint,
         false
       );
       this.$refs.palette_wrapper.addEventListener(
-        "mousemove",
+        'mousemove',
         this.movePoint,
         false
       );
@@ -375,8 +382,10 @@ export default {
               this.$refs.palette.getBoundingClientRect().top
         };
       }
-      if (this.touchType == "Random" || this.touchType == "Eraser") {
-        if (this.touchType == "Eraser") {
+      if (this.touchType == 'Random' || this.touchType == 'Eraser') {
+        // 任意的线条跟橡皮擦的逻辑是一样的，只是橡皮擦的颜色跟背景色要相同，而且橡皮擦不能让它超出范围
+        if (this.touchType == 'Eraser') {
+          // 橡皮擦不能让它超出范围
           if (this.move.x <= this.$refs.eraser.offsetWidth / 2) {
             this.move.x = this.$refs.eraser.offsetWidth / 2;
           }
@@ -385,25 +394,25 @@ export default {
           }
           if (
             this.move.x >=
-            this.canvasStyles.width -
-              2 * this.canvasStyles.borderWidth -
+            this.paletteStyleCopy.width -
+              2 * this.paletteStyleCopy.borderWidth -
               this.$refs.eraser.offsetWidth / 2
           ) {
             this.move.x =
-              this.canvasStyles.width -
-              2 * this.canvasStyles.borderWidth -
+              this.paletteStyleCopy.width -
+              2 * this.paletteStyleCopy.borderWidth -
               this.$refs.eraser.offsetWidth / 2;
           }
 
           if (
             this.move.y >=
-            this.canvasStyles.height -
-              2 * this.canvasStyles.borderWidth -
+            this.paletteStyleCopy.height -
+              2 * this.paletteStyleCopy.borderWidth -
               this.$refs.eraser.offsetHeight / 2
           ) {
             this.move.y =
-              this.canvasStyles.height -
-              2 * this.canvasStyles.borderWidth -
+              this.paletteStyleCopy.height -
+              2 * this.paletteStyleCopy.borderWidth -
               this.$refs.eraser.offsetHeight / 2;
           }
           this.$refs.eraser.style[transformKey] = `translate3d(${this.move.x -
@@ -413,7 +422,7 @@ export default {
         this.ctx.lineTo(this.move.x, this.move.y);
         this.ctx.stroke();
       }
-      if (this.touchType == "PaintCircle" && !this.isEditing) {
+      if (this.touchType == 'PaintCircle' && !this.isEditing) {
         // 如果圆未处于编辑状态，那么可以调整圆的大小
         let r =
           Math.abs(this.startNew.x - this.move.x) >
@@ -423,7 +432,7 @@ export default {
         this.circle.style.cssText = `${transformKey}:translate3d(${this.startNew
           .x - r}px,${this.startNew.y - r}px,0);width:${2 * r}px;height:${2 *
           r}px;`;
-      } else if (this.touchType == "PaintCircle" && this.isEditing) {
+      } else if (this.touchType == 'PaintCircle' && this.isEditing) {
         // 如果处于编辑状态，那么只能调整位置
         this.circle.style[transformKey] = `translate3d(${this.move.x -
           this.circle.offsetWidth / 2}px,${this.move.y -
@@ -431,7 +440,7 @@ export default {
       }
 
       // 正方形的拖动分四个角的拖动
-      if (this.touchType == "PaintRectangle" && !this.isEditing) {
+      if (this.touchType == 'PaintRectangle' && !this.isEditing) {
         this.rectangle.style.width = `${Math.abs(
           this.startNew.x - this.move.x
         )}px`;
@@ -464,40 +473,40 @@ export default {
             this.rectangle.dataset.y = this.startNew.y;
           }
         }
-      } else if (this.touchType == "PaintRectangle" && this.isEditing) {
+      } else if (this.touchType == 'PaintRectangle' && this.isEditing) {
         this.rectangle.style[transformKey] = `translate3d(${this.move.x -
           this.rectangle.offsetWidth}px,${this.move.y -
           this.rectangle.offsetHeight}px,0)`;
       }
 
-      if (this.touchType == "PaintText") {
-        this.text.style.width = `${Math.abs(this.startNew.x - this.move.x)}px`;
-        this.text.style.height = `${Math.abs(this.startNew.y - this.move.y)}px`;
-      }
+      // if (this.touchType == 'PaintText') {
+      //   this.text.style.width = `${Math.abs(this.startNew.x - this.move.x)}px`;
+      //   this.text.style.height = `${Math.abs(this.startNew.y - this.move.y)}px`;
+      // }
     },
     endPoint() {
-      if (this.touchType == "Random") {
+      if (this.touchType == 'Random') {
         if (this.startNew) {
           this.ctx.beginPath();
-          this.ctx.strokeStyle = this.defaultColor;
+          this.ctx.strokeStyle = this.paletteStyleCopy.defaultColor;
 
           this.ctx.arc(
             this.startNew.x,
             this.startNew.y,
-            this.defaultLineWidth / 2,
+            this.paletteStyleCopy.defaultLineWidth / 2,
             0,
             360,
             false
           );
-          this.ctx.fillStyle = this.defaultColor;
+          this.ctx.fillStyle = this.paletteStyleCopy.defaultColor;
           this.ctx.fill();
         }
       }
-      if (this.touchType == "PaintCircle") {
+      if (this.touchType == 'PaintCircle') {
         this.isEdit = true;
         this.isEditing = true;
       }
-      if (this.touchType == "PaintRectangle") {
+      if (this.touchType == 'PaintRectangle') {
         this.isEdit = true;
         this.isEditing = true;
       }
@@ -513,51 +522,55 @@ export default {
 
       this.startNew = null;
       this.$refs.palette_wrapper.removeEventListener(
-        "touchmove",
+        'touchmove',
         this.movePoint,
         false
       );
       this.$refs.palette_wrapper.removeEventListener(
-        "mousemove",
+        'mousemove',
         this.movePoint,
         false
       );
 
       if (
-        this.touchType !== "PaintCircle" &&
-        this.touchType !== "PaintRectangle"
+        this.touchType !== 'PaintCircle' &&
+        this.touchType !== 'PaintRectangle'
       ) {
         this.currectHistory++;
         let t = new Date();
         if (this.currectHistory == this.history.length) {
           this.history.push({
-            time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-              t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-            }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+            time: `${t.getHours() < 10 ? '0' + t.getHours() : t.getHours()}:${
+              t.getMinutes() < 10 ? '0' + t.getMinutes() : t.getMinutes()
+            }:${t.getSeconds() < 10 ? '0' + t.getSeconds() : t.getSeconds()}`,
             text: this.historyTextArr.find(item => {
               return item.operation == this.touchType;
             }).text,
             data: this.ctx.getImageData(
               0,
               0,
-              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+              this.paletteStyleCopy.width -
+                2 * this.paletteStyleCopy.borderWidth,
+              this.paletteStyleCopy.height -
+                2 * this.paletteStyleCopy.borderWidth
             )
           });
         } else {
           // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
           this.history = this.history.slice(this.currectHistory).push({
-            time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-              t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-            }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+            time: `${t.getHours() < 10 ? '0' + t.getHours() : t.getHours()}:${
+              t.getMinutes() < 10 ? '0' + t.getMinutes() : t.getMinutes()
+            }:${t.getSeconds() < 10 ? '0' + t.getSeconds() : t.getSeconds()}`,
             text: this.historyTextArr.find(item => {
               return item.operation == this.touchType;
             }).text,
             data: this.ctx.getImageData(
               0,
               0,
-              this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-              this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+              this.paletteStyleCopy.width -
+                2 * this.paletteStyleCopy.borderWidth,
+              this.paletteStyleCopy.height -
+                2 * this.paletteStyleCopy.borderWidth
             )
           });
         }
@@ -571,8 +584,8 @@ export default {
       });
       // 如果不满足两个活跃的点
       if (canuse.length < 2) {
-        this.$emit("paintLine", "You need at least two active points");
-        console.log("You need at least two active points");
+        this.$emit('paintLine', 'You need at least two active points');
+        console.log('You need at least two active points');
         return;
       }
       canuse.forEach((item, index, arr) => {
@@ -589,14 +602,14 @@ export default {
       });
     },
     // 画闭合多边形
-    paintIrregularPolygon(type = "Hollow") {
+    paintIrregularPolygon(type = 'Hollow') {
       let canuse = this.startOld.filter(item => {
         if (!item.isPaint) return item;
       });
       // 如果不满足三个活跃的点
       if (canuse.length < 3) {
-        this.$emit("paintLine", "You need at least three active points");
-        console.log("You need at least three active points");
+        this.$emit('paintLine', 'You need at least three active points');
+        console.log('You need at least three active points');
         return;
       }
       this.ctx.beginPath();
@@ -611,7 +624,7 @@ export default {
         }
         item.isPaint = true;
       });
-      if (type == "Hollow") {
+      if (type == 'Hollow') {
         // 画空心
         this.ctx.closePath();
         this.ctx.stroke();
@@ -620,42 +633,54 @@ export default {
         this.ctx.fill();
       }
     },
+    // 初始化画笔
+    initpaint() {
+      if (this.isEdit) {
+        this.startOld = [];
+      }
+      this.isEdit = false;
+      this.isEditing = false;
+    },
     // 随便画
     paintRandom() {
-      this.touchType = "Random";
-      this.currentStatus = "普通画笔";
+      this.touchType = 'Random';
+      this.currentStatus = '普通画笔';
+      this.initpaint();
     },
     // 画个圆形
     paintCircle() {
-      this.touchType = "PaintCircle";
-      this.currentStatus = "圆形画笔";
+      this.touchType = 'PaintCircle';
+      this.currentStatus = '圆形画笔';
+      this.initpaint();
     },
     // 画个矩形
     paintRectangle() {
-      this.touchType = "PaintRectangle";
-      this.currentStatus = "矩形画笔";
+      this.touchType = 'PaintRectangle';
+      this.currentStatus = '矩形画笔';
+      this.initpaint();
     },
     // 写文字
     paintText() {
       // 画文字这块涉及到单行多行文字，文本框不够如何显示文字
-      this.touchType = "PaintText";
-      this.currentStatus = "文字画笔";
+      this.touchType = 'PaintText';
+      this.currentStatus = '文字画笔';
+      this.initpaint();
     },
     // 关闭编辑状态
     closeEdit() {
       // 关闭编辑框同时关闭编辑状态
       this.isEdit = false;
       this.isEditing = false;
-      if (this.touchType == "PaintCircle") {
+      if (this.touchType == 'PaintCircle') {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "black";
+        this.ctx.strokeStyle = 'black';
         // 如果圆形发生了移动，那么本来要用move的坐标，但是move的坐标并不是圆心坐标，所以不能用，endPoints这个数组永远只有两个元素
         if (
           this.endPoints[0].x == this.endPoints[1].x &&
           this.endPoints[0].y == this.endPoints[1].y
         ) {
-          // 如果没有发生移动，那么可以用startOld里面的坐标
+          // 如果没有发生移动，那么可以用startOld里面的坐标，也就是一开始圆形定位的时候，立下的圆心
           this.ctx.arc(
             this.startOld[this.startOld.length - 1].x,
             this.startOld[this.startOld.length - 1].y,
@@ -663,6 +688,7 @@ export default {
             0,
             2 * Math.PI
           );
+          this.startOld = [];
         } else {
           this.ctx.arc(
             this.move.x,
@@ -677,10 +703,10 @@ export default {
         this.ctx.stroke();
       }
       // 关闭编辑状态画矩形
-      if (this.touchType == "PaintRectangle") {
+      if (this.touchType == 'PaintRectangle') {
         this.ctx.beginPath();
         this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "black";
+        this.ctx.strokeStyle = 'black';
         if (
           this.endPoints[0].x == this.endPoints[1].x &&
           this.endPoints[0].y == this.endPoints[1].y
@@ -702,39 +728,39 @@ export default {
         this.endPoints = [];
         this.ctx.stroke();
       }
-
+      this.startNew = {};
       // 关闭编辑状态的时候保存历史
       this.currectHistory++;
       let t = new Date();
       if (this.currectHistory == this.history.length) {
         this.history.push({
-          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          time: `${t.getHours() < 10 ? '0' + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? '0' + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? '0' + t.getSeconds() : t.getSeconds()}`,
           text: this.historyTextArr.find(item => {
             return item.operation == this.touchType;
           }).text,
           data: this.ctx.getImageData(
             0,
             0,
-            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+            this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+            this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
           )
         });
       } else {
         // 如果当前所在位置不是最后一条历史记录，而且还重新操作了，那么后面的历史记录要清除
         this.history = this.history.slice(this.currectHistory).push({
-          time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-            t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-          }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
+          time: `${t.getHours() < 10 ? '0' + t.getHours() : t.getHours()}:${
+            t.getMinutes() < 10 ? '0' + t.getMinutes() : t.getMinutes()
+          }:${t.getSeconds() < 10 ? '0' + t.getSeconds() : t.getSeconds()}`,
           text: this.historyTextArr.find(item => {
             return item.operation == this.touchType;
           }).text,
           data: this.ctx.getImageData(
             0,
             0,
-            this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-            this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+            this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+            this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
           )
         });
       }
@@ -745,8 +771,8 @@ export default {
       if (this.isEraser) {
         this.preCurrentStatus = this.currentStatus;
         this.preTouchType = this.touchType;
-        this.currentStatus = "橡皮擦";
-        this.touchType = "Eraser";
+        this.currentStatus = '橡皮擦';
+        this.touchType = 'Eraser';
       } else {
         this.currentStatus = this.preCurrentStatus;
         this.touchType = this.preTouchType;
@@ -759,8 +785,8 @@ export default {
         this.ctx.clearRect(
           0,
           0,
-          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+          this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
         );
         --this.currectHistory;
         if (this.currectHistory == 0) {
@@ -777,8 +803,8 @@ export default {
         this.ctx.clearRect(
           0,
           0,
-          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+          this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
         );
         this.ctx.putImageData(this.history[++this.currectHistory].data, 0, 0);
       } else {
@@ -790,53 +816,53 @@ export default {
       this.ctx.clearRect(
         0,
         0,
-        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+        this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
       );
       this.ctx.putImageData(this.history[index].data, 0, 0);
       this.currectHistory = index;
     },
     // 关闭图片
     closeImage() {
-      this.lastBase64 = "";
+      this.lastBase64 = '';
     },
     // 初始化画布
     init() {
       this.cans = this.$refs.palette;
       this.circle = this.$refs.circle;
       this.rectangle = this.$refs.rectangle;
-      this.ctx = this.$refs.palette.getContext("2d");
+      this.ctx = this.$refs.palette.getContext('2d');
       this.currectHistory++;
       let t = new Date();
       this.history.push({
-        time: `${t.getHours() < 10 ? "0" + t.getHours() : t.getHours()}:${
-          t.getMinutes() < 10 ? "0" + t.getMinutes() : t.getMinutes()
-        }:${t.getSeconds() < 10 ? "0" + t.getSeconds() : t.getSeconds()}`,
-        text: "创建画布",
+        time: `${t.getHours() < 10 ? '0' + t.getHours() : t.getHours()}:${
+          t.getMinutes() < 10 ? '0' + t.getMinutes() : t.getMinutes()
+        }:${t.getSeconds() < 10 ? '0' + t.getSeconds() : t.getSeconds()}`,
+        text: '创建画布',
         data: this.ctx.getImageData(
           0,
           0,
-          this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-          this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+          this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+          this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
         )
       });
       this.$refs.palette_wrapper.addEventListener(
-        "touchstart",
+        'touchstart',
         this.startPoint,
         false
       );
       this.$refs.palette_wrapper.addEventListener(
-        "mousedown",
+        'mousedown',
         this.startPoint,
         false
       );
       this.$refs.palette_wrapper.addEventListener(
-        "touchend",
+        'touchend',
         this.endPoint,
         false
       );
       this.$refs.palette_wrapper.addEventListener(
-        "mouseup",
+        'mouseup',
         this.endPoint,
         false
       );
@@ -847,8 +873,8 @@ export default {
       this.ctx.clearRect(
         0,
         0,
-        this.canvasStyles.width - 2 * this.canvasStyles.borderWidth,
-        this.canvasStyles.height - 2 * this.canvasStyles.borderWidth
+        this.paletteStyleCopy.width - 2 * this.paletteStyleCopy.borderWidth,
+        this.paletteStyleCopy.height - 2 * this.paletteStyleCopy.borderWidth
       );
       this.startNew = null;
       this.startOld = [];
@@ -856,11 +882,11 @@ export default {
       this.currectHistory = -1;
     },
     // 将画布转为图片
-    savePalette(type = "png") {
-      if (type == "png") {
-        this.lastBase64 = this.cans.toDataURL("image/png");
-      } else if (type == "jpeg") {
-        this.lastBase64 = this.cans.toDataURL("image/jpeg", 1);
+    savePalette(type = 'png') {
+      if (type == 'png') {
+        this.lastBase64 = this.cans.toDataURL('image/png');
+      } else if (type == 'jpeg') {
+        this.lastBase64 = this.cans.toDataURL('image/jpeg', 1);
       }
       // 生成图片弹出弹窗
       this.$nextTick(() => {
@@ -870,54 +896,54 @@ export default {
         }, 0);
       });
 
-      this.$emit("savePalette", this.lastBase64);
+      this.$emit('paletteImage', this.lastBase64);
     },
     // 显示编辑画板
     showBar() {
       if (!this.isShowBar) {
-        this.$refs.showBar.style[transformKey] = "translate3d(0,0,0)";
+        this.$refs.showBar.style[transformKey] = 'translate3d(0,0,0)';
         this.isShowBar = true;
         // 打开编辑弹窗的时候不能对画板进行操作
         this.$refs.palette_wrapper.removeEventListener(
-          "touchstart",
+          'touchstart',
           this.startPoint,
           false
         );
         this.$refs.palette_wrapper.removeEventListener(
-          "mousedown",
+          'mousedown',
           this.startPoint,
           false
         );
         this.$refs.palette_wrapper.removeEventListener(
-          "touchend",
+          'touchend',
           this.endPoint,
           false
         );
         this.$refs.palette_wrapper.removeEventListener(
-          "mouseup",
+          'mouseup',
           this.endPoint,
           false
         );
       } else {
-        this.$refs.showBar.style[transformKey] = "translate3d(0,110%,0)";
+        this.$refs.showBar.style[transformKey] = 'translate3d(0,110%,0)';
         this.isShowBar = false;
         this.$refs.palette_wrapper.addEventListener(
-          "touchstart",
+          'touchstart',
           this.startPoint,
           false
         );
         this.$refs.palette_wrapper.addEventListener(
-          "mousedown",
+          'mousedown',
           this.startPoint,
           false
         );
         this.$refs.palette_wrapper.addEventListener(
-          "touchend",
+          'touchend',
           this.endPoint,
           false
         );
         this.$refs.palette_wrapper.addEventListener(
-          "mouseup",
+          'mouseup',
           this.endPoint,
           false
         );
@@ -928,24 +954,26 @@ export default {
       // 先关闭编辑画板
       this.showBar();
       if (!this.isHistory) {
-        this.$refs.historyBar.style[transformKey] = "translate3d(0,0,0)";
+        this.$refs.historyBar.style[transformKey] = 'translate3d(0,0,0)';
         this.isHistory = true;
       } else {
-        this.$refs.historyBar.style[transformKey] = "translate3d(100%,0,0)";
+        this.$refs.historyBar.style[transformKey] = 'translate3d(100%,0,0)';
         this.isHistory = false;
       }
     }
   }
 };
 </script>
-<style>
+<style scoped>
 * {
   margin: 0px;
 }
 .palette {
   overflow: hidden;
+  user-select: none;
 }
 .palette_tip {
+  position: relative;
   margin: 10px 15px;
   padding: 10px 0px;
   font-size: 24px;
@@ -955,12 +983,13 @@ export default {
   border-bottom: 1px solid #eeeeee;
 }
 .tip_btn {
+  position: absolute;
+  right: 0px;
+  top: 8px;
   border: none;
   padding: 5px;
-  background-color: #fed640;
   border-radius: 20px;
   color: white;
-  float: right;
 }
 .tip_btn:focus {
   outline: none;
@@ -1125,9 +1154,9 @@ export default {
 }
 .palette .historyBar .more {
   margin: 0 auto;
-  width: 26px;
-  height: 29px;
-  background-image: url("./more.png");
+  width: 13px;
+  height: 14.5px;
+  background-image: url('./more.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
@@ -1157,7 +1186,7 @@ export default {
 }
 .palette .historyBar .history_wrapper {
   width: 100%;
-  height: 80vh;
+  height: 82vh;
   overflow: auto;
 }
 .palette .historyBar .history_item {

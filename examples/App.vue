@@ -5,23 +5,35 @@
 </template>
 
 <script>
-import preventScroll from "./assets/preventScroll.js";
-preventScroll();
+import palette from '../packages/palette/index';
 export default {
-  name: "app"
+  name: 'app',
+  components: {
+    palette
+  }
 };
 </script>
 
 <style lang="scss">
 #app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  margin: 0px;
+  width: 100%;
+  height: 100vh;
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
 }
 body {
+  position: absolute;
+  left: 0px;
+  top: 0px;
   margin: 0px;
+  width: 100%;
   height: 100vh;
 }
 </style>
