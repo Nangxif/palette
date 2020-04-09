@@ -21,15 +21,15 @@ if (!Element.prototype.closest) {
 let supportsPassive = false;
 function noop() {}
 try {
-  var opts = Object.defineProperty({}, "passive", {
+  var opts = Object.defineProperty({}, 'passive', {
     get: function() {
       supportsPassive = true;
       return true;
     }
   });
 
-  window.addEventListener("testPassive", noop, opts);
-  window.removeEventListener("testPassive", noop, opts);
+  window.addEventListener('testPassive', noop, opts);
+  window.removeEventListener('testPassive', noop, opts);
 } catch (e) {
   supportsPassive = false;
 }
@@ -61,12 +61,12 @@ function getCanScroll(elem, clientSizeKey, scrollSizeKey, overflowKey) {
     return false;
   }
   return (
-    ["hidden", "visible"].indexOf(getComputedStyle(elem)[overflowKey]) === -1
+    ['hidden', 'visible'].indexOf(getComputedStyle(elem)[overflowKey]) === -1
   );
 }
 
 function getCanScrollHori(elem) {
-  return getCanScroll(elem, "clientWidth", "scrollWidth", "overflowX");
+  return getCanScroll(elem, 'clientWidth', 'scrollWidth', 'overflowX');
 }
 
 // function getCanScrollVert(elem) {
@@ -88,19 +88,19 @@ function clearup() {
 }
 
 function injectCSS(selector) {
-  var $style = document.createElement("style");
-  $style.type = "text/css";
-  $style.setAttribute("data-prevent-scroll", "true");
+  var $style = document.createElement('style');
+  $style.type = 'text/css';
+  $style.setAttribute('data-prevent-scroll', 'true');
   $style.innerText = `${selector} { -webkit-overflow-scrolling: touch; }`;
   document.head.appendChild($style);
 }
 
-function preventScroll({ ignore = ".scrollable" } = {}) {
+function preventScroll({ ignore = '.scrollable' } = {}) {
   called = true;
   injectCSS(ignore);
 
   function touchStartHandler(e) {
-    if (typeof ignore === "string") {
+    if (typeof ignore === 'string') {
       $ignoreElem = e.target.closest(ignore);
       if ($ignoreElem) {
         canScrollHori = getCanScrollHori($ignoreElem);
@@ -108,14 +108,14 @@ function preventScroll({ ignore = ".scrollable" } = {}) {
       let { clientX, clientY } = e.touches[0];
       prevTouch = { clientX, clientY };
     }
-    isInsideVConsole = e.target.closest("#__vconsole");
+    isInsideVConsole = e.target.closest('#__vconsole');
   }
 
   function touchMoveHandler(e) {
     if (isInsideVConsole) {
       return;
     }
-    if (typeof ignore === "string") {
+    if (typeof ignore === 'string') {
       let touch = e.touches[0];
       let canScroll = true;
       if (!$ignoreElem) {
@@ -141,7 +141,7 @@ function preventScroll({ ignore = ".scrollable" } = {}) {
         return;
       }
     }
-    if (typeof ignore === "function" && ignore(e.target)) {
+    if (typeof ignore === 'function' && ignore(e.target)) {
       return;
     }
     if (e.cancelable) {
@@ -157,17 +157,17 @@ function preventScroll({ ignore = ".scrollable" } = {}) {
   let options = supportsPassive ? { passive: false } : false;
   function cancel() {
     clearup();
-    window.removeEventListener("touchstart", touchStartHandler, options);
-    window.removeEventListener("touchmove", touchMoveHandler, options);
-    window.removeEventListener("touchend", touchEndHandler, options);
+    window.removeEventListener('touchstart', touchStartHandler, options);
+    window.removeEventListener('touchmove', touchMoveHandler, options);
+    window.removeEventListener('touchend', touchEndHandler, options);
   }
 
   if (called) {
     cancel();
   }
-  window.addEventListener("touchstart", touchStartHandler, options);
-  window.addEventListener("touchmove", touchMoveHandler, options);
-  window.addEventListener("touchend", touchEndHandler, options);
+  window.addEventListener('touchstart', touchStartHandler, options);
+  window.addEventListener('touchmove', touchMoveHandler, options);
+  window.addEventListener('touchend', touchEndHandler, options);
   return { cancel };
 }
 

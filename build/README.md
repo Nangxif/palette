@@ -88,9 +88,8 @@ components: {
 
 ## 三、效果预览
 
-<img src="D:\兔展\palette\doc\QQ截图20200409181351.jpg" alt="QQ截图20200409181351" style="zoom:50%;" />
+<img src="https://github.com/Nangxif/palette/blob/master/doc/QQ截图20200409181351.jpg" alt="QQ截图20200409181351" style="zoom:50%;" />
 
-<img src="D:\兔展\palette\doc\QQ截图20200409181416.jpg" alt="QQ截图20200409181416" style="zoom:50%;" />
+<img src="https://github.com/Nangxif/palette/blob/master/doc/QQ截图20200409181416.jpg" alt="QQ截图20200409181416" style="zoom:50%;" />
 
-
-<img src="D:\兔展\palette\doc\QQ截图20200409181432.jpg" alt="QQ截图20200409181432" style="zoom:50%;" />
+<img src="https://github.com/Nangxif/palette/blob/master/doc/QQ截图20200409181432.jpg" alt="QQ截图20200409181432" style="zoom:50%;" />
