@@ -27,7 +27,8 @@
 ## 一、使用方法
 
 ```javascript
-import palette from "palette";
+import palette from "@nangxif/palette";
+import "@nangxif/palette/dist/css/common.css"
 
 components: {
   palette

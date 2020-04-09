@@ -1,6 +1,6 @@
 {
-  "name": "palette",
-  "version": "0.1.0",
+  "name": "@nangxif/palette",
+  "version": "0.1.1",
   "description": "一个多功能画板",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
